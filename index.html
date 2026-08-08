@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MotoLog</title>
+<meta name="theme-color" content="#14161A">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15130F;
+    --bg-2:#1B1814;
+    --surface:#211D18;
+    --surface-2:#2A251E;
+    --border:#35302A;
+    --text:#F2EEE6;
+    --text-muted:#948C80;
+    --accent:#2F80FF;
+    --accent-dim:rgba(47,128,255,.16);
+    --ok:#6BAA75;
+    --ok-dim:rgba(107,170,117,.14);
+    --warn:#E8A33D;
+    --warn-dim:rgba(232,163,61,.14);
+    --danger:#E4483C;
+    --danger-dim:rgba(228,72,60,.14);
+    --radius:16px;
+    --radius-sm:10px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font-body);height:100%;overflow-x:hidden;}
+  body{-webkit-font-smoothing:antialiased;}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(88px + var(--safe-bottom));}
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0;letter-spacing:-.01em;}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+  .muted{color:var(--text-muted);}
+  button{font-family:inherit;cursor:pointer;color:inherit;}
+  a{color:inherit;}
+  input,select,textarea{font-family:inherit;font-size:16px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:11px 12px;width:100%;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  label{display:block;font-size:13px;color:var(--text-muted);margin-bottom:6px;margin-top:14px;}
+  label:first-child{margin-top:0;}
+  .field{margin-bottom:2px;}
+  .btn{border:none;border-radius:var(--radius-sm);padding:12px 18px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:active{transform:scale(.98);}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
+  .btn-danger{background:var(--danger-dim);color:var(--danger);}
+  .btn-block{width:100%;}
+  .icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+
+  /* Header */
+  .topbar{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,var(--bg) 60%,transparent);padding:18px 18px 8px;display:flex;align-items:center;justify-content:space-between;}
+  .topbar h1{font-size:20px;}
+  .topbar .actions{display:flex;gap:10px;}
+  .icon-btn{width:38px;height:38px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
+
+  /* Vehicle switcher */
+  .veh-switcher{display:flex;gap:10px;overflow-x:auto;padding:4px 18px 14px;scroll-snap-type:x mandatory;}
+  .veh-switcher::-webkit-scrollbar{display:none;}
+  .veh-chip{scroll-snap-align:start;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:9px 16px;font-size:14px;font-weight:500;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:6px;}
+  .veh-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+
+  .content{padding:0 18px 24px;}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:22px 0 10px;}
+
+  /* Cards */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+  .card + .card{margin-top:10px;}
+  .card-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .card-tap{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);}
+
+  /* Gauge cluster */
+  .gauge-hero{display:flex;flex-direction:column;align-items:center;padding:22px 16px 10px;}
+  .gauge-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .gauge-mini{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+
+  /* Banner */
+  .banner{background:var(--warn-dim);border:1px solid rgba(232,163,61,.35);border-radius:var(--radius);padding:14px 14px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .banner-icon{color:var(--warn);flex-shrink:0;}
+  .banner-text{flex:1;font-size:14px;}
+  .banner-close{background:none;border:none;color:var(--text-muted);padding:4px;}
+
+  /* Empty state */
+  .empty{text-align:center;padding:50px 20px;color:var(--text-muted);}
+  .empty .icon{width:40px;height:40px;margin-bottom:12px;opacity:.6;}
+
+  /* Chips / filters */
+  .chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--text-muted);}
+  .chip.active{background:var(--surface-2);color:var(--text);border-color:var(--text-muted);}
+
+  /* Log items */
+  .log-item{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border);}
+  .log-item:last-child{border-bottom:none;}
+  .log-dot{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .log-body{flex:1;min-width:0;}
+  .log-title{font-size:14.5px;font-weight:500;}
+  .log-sub{font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+  .log-meta{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;}
+  .badge-ok{background:var(--ok-dim);color:var(--ok);}
+  .badge-warn{background:var(--warn-dim);color:var(--warn);}
+  .badge-danger{background:var(--danger-dim);color:var(--danger);}
+
+  /* Tab bar */
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(21,19,15,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 6px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
+  .tab-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-muted);font-size:10.5px;padding:6px 14px;border-radius:12px;}
+  .tab-item.active{color:var(--accent);}
+  .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(78px + var(--safe-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(47,128,255,.4);z-index:11;}
+  @media (max-width:559px){ .fab{right:18px;} }
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(10,9,7,.7);z-index:20;display:flex;align-items:flex-end;}
+  .modal-sheet{background:var(--bg-2);border-radius:20px 20px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:88vh;overflow-y:auto;padding:20px 18px calc(24px + var(--safe-bottom));animation:slideup .22s ease-out;}
+  @keyframes slideup{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .modal-header h2{font-size:18px;}
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .type-opt{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text);font-size:13px;font-weight:500;}
+  .type-opt .icon{width:26px;height:26px;color:var(--accent);}
+
+  .attach-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .attach-thumb{width:56px;height:56px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+  .attach-thumb img{width:100%;height:100%;object-fit:cover;}
+  .attach-remove{position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(0,0,0,.6);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+
+  .actions-footer{display:flex;gap:10px;margin-top:20px;}
+
+  /* Chat */
+  .chat-scroll{display:flex;flex-direction:column;gap:10px;padding-bottom:12px;}
+  .msg{max-width:82%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.45;}
+  .msg-user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+  .msg-ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
+  .chat-input-row{position:sticky;bottom:0;display:flex;gap:8px;background:var(--bg);padding:10px 0 4px;}
+
+  .toast{position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:999px;font-size:13px;z-index:30;}
+
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .sub-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
+  .sub-tab{flex:1;background:none;border:none;padding:9px;border-radius:9px;font-size:13px;color:var(--text-muted);font-weight:500;}
+  .sub-tab.active{background:var(--surface-2);color:var(--text);}
+
+  .proposal-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .proposal-item:last-child{border-bottom:none;}
+  .checkbox{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
+  .checkbox.checked{background:var(--accent);border-color:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+/* =========================================================
+   MOTOLOG — note di progetto
+   -----------------------------------------------------------
+   - File unico, no framework: state + render manuale.
+   - IndexedDB per tutti i dati (offline-first).
+   - Le funzioni AI chiamano l'API Gemini (Google) con una chiave
+     personale salvata dall'utente in Impostazioni: richiedono
+     connessione internet, il resto dell'app funziona offline.
+   - Il service worker viene registrato via Blob URL: in alcuni
+     contesti (es. iframe sandboxato) la registrazione puo'
+     fallire silenziosamente — l'app resta comunque funzionale
+     perche' i dati vivono in IndexedDB, non nella cache SW.
+   - Changelog: v1 — build iniziale completa (dashboard, veicoli,
+     log unificato, AI, backup, gauge component).
+     v2 — fix contrasto testo (bottoni non ereditavano colore), tab
+     "Diario" rinominata, sezione Impostazioni dedicata (backup,
+     promemoria, notifiche, cancellazione dati), fix DB_VERSION.
+     v3 — motore AI migrato da Anthropic (proxy artifact, inaffidabile
+     fuori contesto claude.ai) a Google Gemini con chiave personale
+     gratuita configurabile in Impostazioni.
+   ========================================================= */
+
+/* ---------------- CONFIG ---------------- */
+const GEMINI_MODEL = "gemini-flash-latest"; // alias ufficiale, punta sempre all'ultima versione stabile
+function geminiURL(){ return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`; }
+const DEFAULT_SETTINGS = { kmReminderDays: 10, includiAllegatiBackup: true, geminiApiKey: '' };
+
+/* ---------------- UTILS ---------------- */
+const uid = () => crypto.randomUUID();
+const todayISO = () => new Date().toISOString().slice(0,10);
+const fmtDate = (iso) => { if(!iso) return "—"; const d=new Date(iso); return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}); };
+const fmtKm = (n) => n==null ? "—" : Math.round(n).toLocaleString('it-IT') + " km";
+const fmtEuro = (n) => n==null ? "—" : n.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const daysBetween = (a,b) => Math.floor((new Date(b) - new Date(a)) / 86400000);
+
+function blobToBase64(blob){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+function base64ToBlob(base64, mime){
+  const bin = atob(base64);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
+function escapeHTML(s){
+  if(s==null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------------- ICONS (inline SVG, stroke style) ---------------- */
+const ICONS = {
+  dashboard: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3v4M4.2 7.2l2.8 2.8M19.8 7.2 17 10M3 15a9 9 0 0 1 18 0"/><path d="M12 15l4-6"/></svg>`,
+  bike: `<svg class="icon" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 10h5l3.5 7.5M9 10 7 6h3M12.5 10l2 4"/></svg>`,
+  list: `<svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`,
+  spark: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>`,
+  plus: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`,
+  back: `<svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`,
+  close: `<svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
+  camera: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>`,
+  upload: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>`,
+  trash: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>`,
+  wrench: `<svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.1L4 16.5V20h3.5l5.1-5.1a4 4 0 0 0 5.1-5.6l-2.8 2.8-2-2 2.8-2.8z"/></svg>`,
+  gas: `<svg class="icon" viewBox="0 0 24 24"><path d="M5 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15M5 21h10M5 11h10M15 8l3 3v6a1.5 1.5 0 0 0 3 0v-5l-2-3"/></svg>`,
+  alert: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>`,
+  calendar: `<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  car: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 16V11l2-5h12l2 5v5"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/><path d="M4 13h16"/></svg>`,
+  chevron: `<svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M9 6l6 6-6 6"/></svg>`,
+  file: `<svg class="icon" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/></svg>`,
+  send: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 12 20 4l-8 16-2-7-6-1z"/></svg>`,
+  check: `<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2.4;"><path d="M5 12l5 5L19 7"/></svg>`,
+  settings: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2.06 2.06 0 1 1-2.92 2.92l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2.06 2.06 0 1 1-4.13 0v-.1a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2.06 2.06 0 1 1-2.92-2.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2.06 2.06 0 1 1 0-4.13h.1A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2.06 2.06 0 1 1 2.92-2.92l.06.06a1.7 1.7 0 0 0 1.87.34H9.2A1.7 1.7 0 0 0 10.75 3v-.1a2.06 2.06 0 1 1 4.13 0V3a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2.06 2.06 0 1 1 2.92 2.92l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2.06 2.06 0 1 1 0 4.13h-.1a1.7 1.7 0 0 0-1.5 1.87z"/></svg>`,
+};
+
+/* ---------------- DB LAYER ---------------- */
+const DB_NAME = "motolog-db", DB_VERSION = 2;
+let dbInstance = null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      const mk = (name) => { const s = db.createObjectStore(name,{keyPath:'id'}); s.createIndex('veicoloId','veicoloId'); return s; };
+      if(!db.objectStoreNames.contains('veicoli')) db.createObjectStore('veicoli',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('manutenzioni')) mk('manutenzioni');
+      if(!db.objectStoreNames.contains('scadenze')) mk('scadenze');
+      if(!db.objectStoreNames.contains('problemi')) mk('problemi');
+      if(!db.objectStoreNames.contains('rifornimenti')) mk('rifornimenti');
+      if(!db.objectStoreNames.contains('manuali')) mk('manuali');
+      if(!db.objectStoreNames.contains('allegati')) db.createObjectStore('allegati',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('settings')) db.createObjectStore('settings',{keyPath:'key'});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function getDB(){ if(!dbInstance) dbInstance = await openDB(); return dbInstance; }
+async function storeFor(name, mode='readonly'){ const db = await getDB(); return db.transaction(name, mode).objectStore(name); }
+
+async function dbGetAll(name){ const s = await storeFor(name); return new Promise((res,rej)=>{ const r=s.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function dbGet(name,id){ const s = await storeFor(name); return new Promise((res,rej)=>{ const r=s.get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function dbPut(name,obj){ const s = await storeFor(name,'readwrite'); return new Promise((res,rej)=>{ const r=s.put(obj); r.onsuccess=()=>res(obj); r.onerror=()=>rej(r.error); }); }
+async function dbDelete(name,id){ const s = await storeFor(name,'readwrite'); return new Promise((res,rej)=>{ const r=s.delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+async function dbByVeicolo(name,veicoloId){ const s = await storeFor(name); return new Promise((res,rej)=>{ const idx=s.index('veicoloId'); const r=idx.getAll(veicoloId); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+
+/* ---------------- STATE ---------------- */
+const state = {
+  tab: 'dashboard',
+  veicoli: [],
+  selectedVeicoloId: null,
+  logFilter: 'tutti',
+  aiSubtab: 'chat',
+  chatHistory: [],
+  modal: null,
+  toast: null,
+  bannerDismissed: {},
+  cache: { manutenzioni:[], scadenze:[], problemi:[], rifornimenti:[], manuale:null },
+  busy: false,
+  settings: { ...DEFAULT_SETTINGS },
+};
+
+async function loadSettings(){
+  const rows = await dbGetAll('settings');
+  const map = {}; rows.forEach(r=>{ map[r.key]=r.value; });
+  state.settings = { ...DEFAULT_SETTINGS, ...map };
+}
+async function saveSetting(key, value){
+  state.settings[key] = value;
+  await dbPut('settings', { key, value });
+}
+
+function showToast(text){ state.toast = text; render(); setTimeout(()=>{ state.toast=null; render(); }, 2200); }
+
+async function loadVeicoli(){
+  state.veicoli = await dbGetAll('veicoli');
+  state.veicoli.sort((a,b)=>a.marca.localeCompare(b.marca));
+  if(!state.selectedVeicoloId && state.veicoli.length) state.selectedVeicoloId = state.veicoli[0].id;
+  if(state.selectedVeicoloId && !state.veicoli.find(v=>v.id===state.selectedVeicoloId)){
+    state.selectedVeicoloId = state.veicoli[0]?.id || null;
+  }
+}
+async function loadVeicoloData(veicoloId){
+  if(!veicoloId){ state.cache = { manutenzioni:[], scadenze:[], problemi:[], rifornimenti:[], manuale:null }; return; }
+  const [manutenzioni, scadenze, problemi, rifornimenti, manuali] = await Promise.all([
+    dbByVeicolo('manutenzioni', veicoloId),
+    dbByVeicolo('scadenze', veicoloId),
+    dbByVeicolo('problemi', veicoloId),
+    dbByVeicolo('rifornimenti', veicoloId),
+    dbByVeicolo('manuali', veicoloId),
+  ]);
+  manutenzioni.sort((a,b)=> new Date(b.data)-new Date(a.data));
+  scadenze.sort((a,b)=> new Date(a.data)-new Date(b.data));
+  problemi.sort((a,b)=> new Date(b.data)-new Date(a.data));
+  rifornimenti.sort((a,b)=> new Date(b.data)-new Date(a.data));
+  state.cache = { manutenzioni, scadenze, problemi, rifornimenti, manuale: manuali[0] || null };
+}
+function currentVeicolo(){ return state.veicoli.find(v=>v.id===state.selectedVeicoloId) || null; }
+
+/* ---------------- LOGICA SCADENZE / PROIEZIONE KM ---------------- */
+function nextScadenzaKm(veicolo){
+  const items = state.cache.manutenzioni.filter(m => m.veicoloId===veicolo.id && m.prossimaScadenzaKm);
+  if(!items.length) return null;
+  items.sort((a,b)=> a.prossimaScadenzaKm - b.prossimaScadenzaKm);
+  return items[0];
+}
+function stimaKmAttuali(veicolo){
+  // Proiezione basata sulla media storica km/giorno da manutenzioni + rifornimenti
+  const points = [...state.cache.manutenzioni, ...state.cache.rifornimenti]
+    .map(x => ({ data: x.data, km: x.km }))
+    .filter(x => x.km != null)
+    .sort((a,b)=> new Date(a.data) - new Date(b.data));
+  points.push({ data: veicolo.dataUltimoAggiornamentoKm, km: veicolo.kmAttuali });
+  if(points.length < 2) return veicolo.kmAttuali;
+  const first = points[0], last = points[points.length-1];
+  const days = daysBetween(first.data, last.data) || 1;
+  const kmPerDay = Math.max(0, (last.km - first.km) / days);
+  const sinceLast = daysBetween(veicolo.dataUltimoAggiornamentoKm, todayISO());
+  if(sinceLast <= 0) return veicolo.kmAttuali;
+  return Math.round(veicolo.kmAttuali + kmPerDay * sinceLast);
+}
+function kmReminderNeeded(veicolo){
+  const d = daysBetween(veicolo.dataUltimoAggiornamentoKm, todayISO());
+  return d >= state.settings.kmReminderDays && !state.bannerDismissed[veicolo.id + todayISO()];
+}
+
+/* ---------------- COMPONENTI ---------------- */
+function gaugeSVG({ value, max, label, sublabel, size=150, colorOverride=null }){
+  const pct = max > 0 ? Math.max(0, Math.min(1, value/max)) : 0;
+  const r = (size/2) - 12;
+  const c = 2 * Math.PI * r;
+  const startOffset = c * 0.25; // gauge parte in basso a sx, 270°
+  const arc = c * 0.75;
+  const filled = arc * pct;
+  let color = colorOverride;
+  if(!color){ color = pct > 0.5 ? 'var(--ok)' : pct > 0.2 ? 'var(--warn)' : 'var(--danger)'; }
+  return `
+  <div style="position:relative;width:${size}px;height:${size}px;">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(135deg);">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="10" stroke-dasharray="${arc} ${c}" stroke-linecap="round"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${filled} ${c}" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div class="mono" style="font-size:${size*0.15}px;font-weight:600;">${label}</div>
+      <div class="muted" style="font-size:11px;text-align:center;max-width:${size*0.7}px;margin-top:2px;">${sublabel}</div>
+    </div>
+  </div>`;
+}
+
+function bannerHTML(veicolo){
+  if(!kmReminderNeeded(veicolo)) return '';
+  return `
+  <div class="banner">
+    <div class="banner-icon">${ICONS.alert}</div>
+    <div class="banner-text">Non aggiorni i km di <b>${escapeHTML(veicolo.marca)} ${escapeHTML(veicolo.modello)}</b> da un po'. Aggiornali per tenere le scadenze precise.
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="openKmUpdate" data-id="${veicolo.id}">Aggiorna ora</button>
+      </div>
+    </div>
+    <button class="banner-close" data-action="dismissBanner" data-id="${veicolo.id}">${ICONS.close}</button>
+  </div>`;
+}
+
+function tabBarHTML(){
+  const tabs = [
+    {id:'dashboard', icon:ICONS.dashboard, label:'Dashboard'},
+    {id:'veicoli', icon:ICONS.bike, label:'Veicoli'},
+    {id:'log', icon:ICONS.list, label:'Diario'},
+    {id:'ai', icon:ICONS.spark, label:'AI'},
+    {id:'impostazioni', icon:ICONS.settings, label:'Impostazioni'},
+  ];
+  return `<div class="tabbar">${tabs.map(t=>`
+    <button class="tab-item ${state.tab===t.id?'active':''}" data-action="setTab" data-id="${t.id}">
+      ${t.icon}<span>${t.label}</span>
+    </button>`).join('')}</div>`;
+}
+
+function fabHTML(){
+  if(state.tab==='ai' || state.tab==='impostazioni') return '';
+  const action = state.tab==='veicoli' ? 'openVeicoloForm' : 'openTypeChooser';
+  return `<button class="fab" data-action="${action}">${ICONS.plus}</button>`;
+}
+
+/* ---------------- VISTE ---------------- */
+function viewDashboard(){
+  if(!state.veicoli.length){
+    return `<div class="content">${emptyState('bike','Nessun veicolo ancora','Aggiungi la tua prima moto o auto per iniziare a tracciare manutenzioni e scadenze.','Aggiungi veicolo','openVeicoloForm')}</div>`;
+  }
+  const v = currentVeicolo();
+  if(!v) return '';
+  const nextManut = nextScadenzaKm(v);
+  const kmStimati = stimaKmAttuali(v);
+  const kmRimanenti = nextManut ? Math.max(0, nextManut.prossimaScadenzaKm - kmStimati) : null;
+  const maxRange = nextManut ? Math.max(1, nextManut.prossimaScadenzaKm - (nextManut.km||0)) : 1;
+
+  const costoTotale = state.cache.manutenzioni.reduce((s,m)=> s + (m.costo||0), 0);
+  const costoKm = v.kmAttuali > 0 ? (costoTotale / v.kmAttuali) : 0;
+
+  const prossimaScadenzaData = state.cache.scadenze.find(s=>s.stato==='attiva');
+
+  const eventi = [
+    ...state.cache.manutenzioni.map(m=>({tipo:'manutenzione', data:m.data, label: categoriaLabel(m.categoria, m.categoriaCustom), sub: fmtKm(m.km)})),
+    ...state.cache.problemi.map(p=>({tipo:'problema', data:p.data, label: p.sintomi, sub: p.stato})),
+  ].sort((a,b)=> new Date(b.data)-new Date(a.data)).slice(0,4);
+
+  return `
+  <div class="content">
+    ${bannerHTML(v)}
+    <div class="card gauge-hero">
+      ${nextManut ? gaugeSVG({value:kmRimanenti, max:maxRange, label: fmtKm(kmRimanenti).replace(' km',''), sublabel:`km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"`}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Nessuna scadenza km impostata', colorOverride:'var(--text-muted)'})}
+      <div class="muted mono" style="margin-top:10px;font-size:12.5px;">km stimati oggi: ${fmtKm(kmStimati)}</div>
+    </div>
+    <div class="gauge-mini-row">
+      <div class="gauge-mini">
+        ${gaugeSVG({value: Math.min(costoKm,0.5), max:0.5, label: costoKm.toFixed(2), sublabel:'€ / km', size:104, colorOverride:'var(--accent)'})}
+      </div>
+      <div class="gauge-mini">
+        ${gaugeSVG({value: prossimaScadenzaData ? Math.max(0,30-daysBetween(todayISO(),prossimaScadenzaData.data)) : 0, max:30, label: prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—', sublabel: prossimaScadenzaData ? tipoScadenzaLabel(prossimaScadenzaData.tipo)+' (gg)' : 'Nessuna scadenza', size:104})}
+      </div>
+    </div>
+
+    <div class="section-title">Eventi recenti</div>
+    ${eventi.length ? `<div class="card">${eventi.map(e=>`
+      <div class="log-item">
+        <div class="log-dot" style="background:${e.tipo==='problema'?'var(--danger-dim)':'var(--accent-dim)'};color:${e.tipo==='problema'?'var(--danger)':'var(--accent)'};">${e.tipo==='problema'?ICONS.alert:ICONS.wrench}</div>
+        <div class="log-body">
+          <div class="log-title">${escapeHTML(e.label)}</div>
+          <div class="log-sub">${e.sub}</div>
+        </div>
+        <div class="log-meta">${fmtDate(e.data)}</div>
+      </div>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento registrato</div>`}
+  </div>`;
+}
+
+function emptyState(icon, title, text, actionLabel, action){
+  return `<div class="empty">
+    ${ICONS[icon]}
+    <h3 style="margin-bottom:6px;">${title}</h3>
+    <p style="font-size:14px;margin:0 0 18px;">${text}</p>
+    ${actionLabel ? `<button class="btn btn-primary" data-action="${action}">${actionLabel}</button>` : ''}
+  </div>`;
+}
+
+function viewVeicoli(){
+  if(!state.veicoli.length){
+    return `<div class="content">${emptyState('bike','Nessun veicolo','Aggiungi la tua prima moto o auto.','Aggiungi veicolo','openVeicoloForm')}</div>`;
+  }
+  return `<div class="content">
+    ${state.veicoli.map(v=>`
+      <button class="card card-tap" data-action="openVeicoloDetail" data-id="${v.id}" style="margin-bottom:10px;">
+        <div class="card-row">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="log-dot" style="background:var(--accent-dim);color:var(--accent);width:42px;height:42px;">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
+            <div>
+              <div style="font-weight:600;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
+              <div class="muted mono" style="font-size:13px;">${fmtKm(v.kmAttuali)} · ${v.anno}</div>
+            </div>
+          </div>
+          ${ICONS.chevron}
+        </div>
+      </button>`).join('')}
+  </div>`;
+}
+
+function viewVeicoloDetail(v){
+  return `<div class="content">
+    <div class="card">
+      <div class="card-row" style="margin-bottom:14px;">
+        <h2>${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</h2>
+        <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}">${ICONS.wrench}</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px;">
+        <div><div class="muted" style="font-size:12px;">Tipo</div>${v.tipo==='moto'?'Moto':'Auto'}</div>
+        <div><div class="muted" style="font-size:12px;">Anno</div>${v.anno}</div>
+        <div><div class="muted" style="font-size:12px;">Targa</div>${v.targa||'—'}</div>
+        <div><div class="muted" style="font-size:12px;">Km attuali</div><span class="mono">${fmtKm(v.kmAttuali)}</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">Manuale (per l'AI)</div>
+    <div class="card">
+      ${state.cache.manuale ? `
+        <div class="card-row">
+          <div style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHTML(state.cache.manuale.nome)}</span></div>
+          <button class="icon-btn" data-action="deleteManuale" data-id="${state.cache.manuale.id}">${ICONS.trash}</button>
+        </div>` : `
+        <label style="margin:0 0 8px;">Nessun manuale caricato</label>
+        <label class="btn btn-ghost btn-block" style="cursor:pointer;">
+          ${ICONS.upload} Carica PDF manuale
+          <input type="file" accept="application/pdf" style="display:none;" data-action="uploadManuale" data-id="${v.id}">
+        </label>`}
+    </div>
+
+    <div class="section-title">Statistiche</div>
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:center;">
+      <div><div class="mono" style="font-size:18px;font-weight:600;">${fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0))}</div><div class="muted" style="font-size:12px;">Spesa manutenzioni</div></div>
+      <div><div class="mono" style="font-size:18px;font-weight:600;">${state.cache.problemi.filter(p=>p.stato==='aperto').length}</div><div class="muted" style="font-size:12px;">Problemi aperti</div></div>
+    </div>
+
+    <button class="btn btn-danger btn-block" style="margin-top:20px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
+  </div>`;
+}
+
+function categoriaLabel(cat, custom){
+  const map = {olio:'Cambio olio', catena:'Catena', pastiglie:'Pastiglie freni', gomme:'Gomme', tagliando:'Tagliando', altro: custom || 'Altro'};
+  return map[cat] || cat;
+}
+function tipoScadenzaLabel(t){
+  const map = {bollo:'Bollo', assicurazione:'Assicurazione', revisione:'Revisione', tagliando:'Tagliando', altro:'Altro'};
+  return map[t] || t;
+}
+
+function viewLog(){
+  if(!state.veicoli.length){
+    return `<div class="content">${emptyState('list','Nessun dato','Aggiungi prima un veicolo dalla scheda Veicoli.',null,null)}</div>`;
+  }
+  const filters = [
+    {id:'tutti', label:'Tutti'},
+    {id:'manutenzioni', label:'Manutenzioni'},
+    {id:'scadenze', label:'Scadenze'},
+    {id:'problemi', label:'Problemi'},
+    {id:'rifornimenti', label:'Rifornimenti'},
+  ];
+  let items = [];
+  if(state.logFilter==='tutti' || state.logFilter==='manutenzioni'){
+    items.push(...state.cache.manutenzioni.map(m=>({...m,_type:'manutenzioni'})));
+  }
+  if(state.logFilter==='tutti' || state.logFilter==='scadenze'){
+    items.push(...state.cache.scadenze.map(s=>({...s,_type:'scadenze'})));
+  }
+  if(state.logFilter==='tutti' || state.logFilter==='problemi'){
+    items.push(...state.cache.problemi.map(p=>({...p,_type:'problemi'})));
+  }
+  if(state.logFilter==='tutti' || state.logFilter==='rifornimenti'){
+    items.push(...state.cache.rifornimenti.map(r=>({...r,_type:'rifornimenti'})));
+  }
+  items.sort((a,b)=> new Date(b.data)-new Date(a.data));
+
+  return `<div class="content">
+    <div class="chip-row">
+      ${filters.map(f=>`<button class="chip ${state.logFilter===f.id?'active':''}" data-action="setLogFilter" data-id="${f.id}">${f.label}</button>`).join('')}
+    </div>
+    ${items.length ? `<div class="card">${items.map(it=>logItemHTML(it)).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun elemento in questa categoria</div>`}
+  </div>`;
+}
+
+function logItemHTML(it){
+  let icon, iconBg, iconColor, title, sub, meta='';
+  if(it._type==='manutenzioni'){
+    icon=ICONS.wrench; iconBg='var(--accent-dim)'; iconColor='var(--accent)';
+    title=categoriaLabel(it.categoria,it.categoriaCustom); sub=`${fmtKm(it.km)}${it.costo?' · '+fmtEuro(it.costo):''}`;
+  } else if(it._type==='scadenze'){
+    icon=ICONS.calendar; iconBg='var(--warn-dim)'; iconColor='var(--warn)';
+    title=tipoScadenzaLabel(it.tipo); sub=it.stato==='completata'?'Completata':'Attiva';
+  } else if(it._type==='problemi'){
+    icon=ICONS.alert; iconBg='var(--danger-dim)'; iconColor='var(--danger)';
+    title=it.sintomi; sub=it.stato==='risolto'?'Risolto':'Aperto';
+  } else {
+    icon=ICONS.gas; iconBg='var(--ok-dim)'; iconColor='var(--ok)';
+    title=`${it.litri} L`; sub=`${fmtEuro(it.costo)} · ${fmtKm(it.km)}`;
+  }
+  return `<button class="log-item" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;" data-action="openEdit" data-type="${it._type}" data-id="${it.id}">
+    <div class="log-dot" style="background:${iconBg};color:${iconColor};">${icon}</div>
+    <div class="log-body">
+      <div class="log-title">${escapeHTML(title)}</div>
+      <div class="log-sub">${escapeHTML(sub)}</div>
+    </div>
+    <div class="log-meta">${fmtDate(it.data)}</div>
+  </button>`;
+}
+
+function viewAI(){
+  if(!state.veicoli.length){
+    return `<div class="content">${emptyState('spark','Aggiungi un veicolo','Le funzioni AI hanno bisogno di un veicolo selezionato.',null,null)}</div>`;
+  }
+  const v = currentVeicolo();
+  if(!state.settings.geminiApiKey){
+    return `<div class="content">
+      <div class="card" style="text-align:center;padding:30px 20px;">
+        ${ICONS.spark}
+        <h3 style="margin:12px 0 6px;">Configura l'assistente AI</h3>
+        <p class="muted" style="font-size:13.5px;margin:0 0 18px;">Serve una chiave Gemini gratuita (2 minuti, nessuna carta) per usare chat, analisi manuale e lettura foto.</p>
+        <button class="btn btn-primary" data-action="setTab" data-id="impostazioni">Vai in Impostazioni</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="content">
+    <div class="sub-tabs">
+      <button class="sub-tab ${state.aiSubtab==='chat'?'active':''}" data-action="setAiSubtab" data-id="chat">Assistente</button>
+      <button class="sub-tab ${state.aiSubtab==='manuale'?'active':''}" data-action="setAiSubtab" data-id="manuale">Manuale</button>
+    </div>
+    ${state.aiSubtab==='chat' ? viewAIChat(v) : viewAIManuale(v)}
+  </div>`;
+}
+
+function viewAIChat(v){
+  return `
+    <div class="chat-scroll">
+      ${state.chatHistory.length===0 ? `<div class="muted" style="text-align:center;padding:30px 10px;font-size:13.5px;">Chiedimi consigli su rumori strani, spie accese, o problemi ricorrenti su ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}. Uso lo storico problemi come contesto.</div>` : ''}
+      ${state.chatHistory.map(m=>`<div class="msg ${m.role==='user'?'msg-user':'msg-ai'}">${escapeHTML(m.content)}</div>`).join('')}
+      ${state.busy ? `<div class="msg msg-ai"><div class="spinner"></div></div>` : ''}
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="Scrivi un messaggio..." ${state.busy?'disabled':''}>
+      <button class="btn btn-primary" data-action="sendChat" ${state.busy?'disabled':''}>${ICONS.send}</button>
+    </div>
+    <div class="muted" style="font-size:11.5px;text-align:center;margin-top:6px;">Richiede connessione internet</div>
+  `;
+}
+
+function viewAIManuale(v){
+  return `
+    <div class="card">
+      ${state.cache.manuale ? `
+        <div class="card-row" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHTML(state.cache.manuale.nome)}</span></div>
+        </div>
+        <button class="btn btn-primary btn-block" data-action="analizzaManuale" ${state.busy?'disabled':''}>
+          ${state.busy ? '<div class="spinner"></div> Analisi in corso...' : 'Analizza e proponi scadenze'}
+        </button>
+        <div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px;">Richiede connessione internet</div>
+      ` : `
+        <label class="btn btn-ghost btn-block" style="cursor:pointer;">
+          ${ICONS.upload} Carica PDF manuale del veicolo
+          <input type="file" accept="application/pdf" style="display:none;" data-action="uploadManuale" data-id="${v.id}">
+        </label>
+      `}
+    </div>
+    ${state.proposte && state.proposte.length ? `
+      <div class="section-title">Proposte scadenze</div>
+      <div class="card">
+        ${state.proposte.map((p,i)=>`
+          <div class="proposal-item">
+            <button class="checkbox ${p.accettata?'checked':''}" data-action="toggleProposta" data-id="${i}">${p.accettata?ICONS.check:''}</button>
+            <div style="flex:1;">
+              <div class="log-title">${escapeHTML(p.descrizione)}</div>
+              <div class="log-sub">${p.intervalloKm?fmtKm(p.intervalloKm):''}${p.intervalloMesi?' · ogni '+p.intervalloMesi+' mesi':''}</div>
+            </div>
+          </div>`).join('')}
+        <button class="btn btn-primary btn-block" style="margin-top:14px;" data-action="salvaProposte">Salva selezionate</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+function viewImpostazioni(){
+  const notifStatus = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const notifLabel = { granted:'Attive', denied:'Bloccate — riattivale dalle impostazioni del sito nel browser', default:'Non ancora richieste', unsupported:'Non supportate su questo browser' }[notifStatus];
+  const hasKey = !!state.settings.geminiApiKey;
+  return `<div class="content">
+    <div class="section-title">Assistente AI</div>
+    <div class="card">
+      ${hasKey ? `
+        <div class="card-row">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="log-dot" style="background:var(--ok-dim);color:var(--ok);width:34px;height:34px;">${ICONS.check}</div>
+            <div>
+              <div style="font-size:14px;">Chiave Gemini configurata</div>
+              <div class="muted mono" style="font-size:12px;margin-top:2px;">${state.settings.geminiApiKey.slice(0,6)}••••••••</div>
+            </div>
+          </div>
+          <button class="icon-btn" data-action="rimuoviGeminiKey">${ICONS.trash}</button>
+        </div>
+      ` : `
+        <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Le funzioni AI (chat, analisi manuale, lettura foto) usano Google Gemini con una chiave gratuita tua — nessun costo, nessuna carta richiesta.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">1</div><div style="font-size:13.5px;">Vai su <b>aistudio.google.com</b> e accedi con un account Google</div></div>
+          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">2</div><div style="font-size:13.5px;">Nella barra laterale tocca <b>"Get API key"</b> → <b>"Create API key"</b></div></div>
+          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">3</div><div style="font-size:13.5px;">Copia la chiave generata (inizia con <b>AIza...</b>)</div></div>
+          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">4</div><div style="font-size:13.5px;">Incollala qui sotto e salva</div></div>
+        </div>
+        <form id="geminiKeyForm">
+          <input type="password" name="geminiApiKey" placeholder="AIzaSy..." autocomplete="off" required>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top:10px;">Salva chiave</button>
+        </form>
+      `}
+      <div class="muted" style="font-size:11.5px;margin-top:14px;line-height:1.5;">La chiave resta salvata solo su questo dispositivo (nel database locale dell'app) e viene inviata solo a Google, direttamente dal tuo telefono.</div>
+    </div>
+
+    <div class="section-title">Promemoria</div>
+    <div class="card">
+      <div class="field" style="margin-top:0;">
+        <label>Sollecita aggiornamento km dopo (giorni)</label>
+        <input type="number" min="1" max="60" value="${state.settings.kmReminderDays}" data-action="setKmReminderDays">
+      </div>
+      <div class="card-row" style="margin-top:16px;">
+        <div>
+          <div style="font-size:14px;">Notifiche</div>
+          <div class="muted" style="font-size:12.5px;margin-top:2px;">${notifLabel}</div>
+        </div>
+        ${notifStatus==='default' ? `<button class="btn btn-ghost" style="padding:8px 14px;font-size:13px;" data-action="requestNotifPermission">Attiva</button>` : ''}
+      </div>
+    </div>
+
+    <div class="section-title">Backup dati</div>
+    <div class="card">
+      <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Esporta tutti i dati in un unico file JSON, o ripristina da un backup precedente.</p>
+      <div class="card-row" style="margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;">Includi foto e documenti</div>
+          <div class="muted" style="font-size:12px;margin-top:2px;">Disattiva per un file più leggero</div>
+        </div>
+        <button class="checkbox ${state.settings.includiAllegatiBackup?'checked':''}" data-action="toggleIncludiAllegati">${state.settings.includiAllegatiBackup?ICONS.check:''}</button>
+      </div>
+      <button class="btn btn-ghost btn-block" data-action="exportBackup" style="margin-bottom:10px;">${ICONS.upload} Esporta backup</button>
+      <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.file} Importa backup<input type="file" accept="application/json" id="importInput" style="display:none;"></label>
+    </div>
+
+    <div class="section-title">Zona pericolosa</div>
+    <div class="card">
+      <button class="btn btn-danger btn-block" data-action="cancellaTuttiDati">${ICONS.trash} Cancella tutti i dati</button>
+    </div>
+
+    <div class="section-title">App</div>
+    <div class="card muted" style="font-size:12.5px;line-height:1.5;">
+      MotoLog v1 — i dati restano sul dispositivo, nessun account richiesto. Le funzioni AI usano la tua chiave Gemini personale e richiedono connessione internet.
+    </div>
+  </div>`;
+}
+
+/* ---------------- FORM MODALS ---------------- */
+function modalWrapper(inner){
+  return `<div class="modal-overlay" data-action="closeModalBg">
+    <div class="modal-sheet" data-stop="1">${inner}</div>
+  </div>`;
+}
+
+function typeChooserModal(){
+  const types = [
+    {id:'manutenzioni', icon:ICONS.wrench, label:'Manutenzione'},
+    {id:'scadenze', icon:ICONS.calendar, label:'Scadenza'},
+    {id:'problemi', icon:ICONS.alert, label:'Problema'},
+    {id:'rifornimenti', icon:ICONS.gas, label:'Rifornimento'},
+  ];
+  return modalWrapper(`
+    <div class="modal-header"><h2>Nuovo elemento</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="type-grid">
+      ${types.map(t=>`<button class="type-opt" data-action="openForm" data-type="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
+    </div>
+  `);
+}
+
+function veicoloFormModal(payload){
+  const v = payload?.id ? state.veicoli.find(x=>x.id===payload.id) : null;
+  return modalWrapper(`
+    <div class="modal-header"><h2>${v?'Modifica veicolo':'Nuovo veicolo'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <form id="veicoloForm">
+      <div class="field"><label>Tipo</label>
+        <div class="sub-tabs" style="margin-bottom:0;">
+          <button type="button" class="sub-tab ${(!v||v.tipo==='moto')?'active':''}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;" data-action="selectTipo" data-value="moto">${ICONS.bike} Moto</button>
+          <button type="button" class="sub-tab ${v?.tipo==='auto'?'active':''}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;" data-action="selectTipo" data-value="auto">${ICONS.car} Auto</button>
+        </div>
+        <input type="hidden" name="tipo" id="tipoHiddenInput" value="${v?.tipo||'moto'}">
+      </div>
+      <div class="field"><label>Marca</label><input name="marca" value="${escapeHTML(v?.marca||'')}" required></div>
+      <div class="field"><label>Modello</label><input name="modello" value="${escapeHTML(v?.modello||'')}" required></div>
+      <div class="field"><label>Anno</label><input name="anno" type="number" value="${v?.anno||new Date().getFullYear()}" required></div>
+      <div class="field"><label>Targa</label><input name="targa" value="${escapeHTML(v?.targa||'')}"></div>
+      <div class="field"><label>Km attuali</label><input name="kmAttuali" type="number" value="${v?.kmAttuali??0}" required></div>
+      <div class="actions-footer">
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveVeicolo" data-id="${v?.id||''}">Salva</button>
+      </div>
+    </form>
+  `);
+}
+
+function manutenzioneFormModal(payload){
+  const m = payload?.id ? state.cache.manutenzioni.find(x=>x.id===payload.id) : null;
+  return modalWrapper(`
+    <div class="modal-header"><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <form id="entryForm">
+      <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||todayISO()}" required></div>
+      <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
+      <div class="field"><label>Categoria</label>
+        <select name="categoria">
+          ${['olio','catena','pastiglie','gomme','tagliando','altro'].map(c=>`<option value="${c}" ${m?.categoria===c?'selected':''}>${categoriaLabel(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Descrizione</label><textarea name="descrizione" rows="2">${escapeHTML(m?.descrizione||'')}</textarea></div>
+      <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${m?.costo??''}"></div>
+      <div class="field"><label>Prossima scadenza — km</label><input name="prossimaScadenzaKm" type="number" value="${m?.prossimaScadenzaKm??''}"></div>
+      <div class="field"><label>Allega foto/documento</label>
+        <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.camera} Aggiungi foto<input type="file" accept="image/*" multiple style="display:none;" id="attachInput"></label>
+        <div class="attach-row" id="attachPreview"></div>
+      </div>
+      <div class="actions-footer">
+        ${m?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="manutenzioni" data-id="${m.id}">${ICONS.trash}</button>`:''}
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveManutenzione" data-id="${m?.id||''}">Salva</button>
+      </div>
+    </form>
+  `);
+}
+
+function scadenzaFormModal(payload){
+  const s = payload?.id ? state.cache.scadenze.find(x=>x.id===payload.id) : null;
+  return modalWrapper(`
+    <div class="modal-header"><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;">${ICONS.camera} Scansiona documento (AI)<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
+    <form id="entryForm">
+      <div class="field"><label>Tipo</label>
+        <select name="tipo">
+          ${['bollo','assicurazione','revisione','tagliando','altro'].map(t=>`<option value="${t}" ${s?.tipo===t?'selected':''}>${tipoScadenzaLabel(t)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${s?.data||todayISO()}" required></div>
+      <div class="field"><label>Ricorrenza</label>
+        <select name="ricorrenza">
+          <option value="nessuna" ${s?.ricorrenza==='nessuna'?'selected':''}>Nessuna</option>
+          <option value="annuale" ${s?.ricorrenza==='annuale'?'selected':''}>Annuale</option>
+          <option value="biennale" ${s?.ricorrenza==='biennale'?'selected':''}>Biennale</option>
+        </select>
+      </div>
+      <div class="actions-footer">
+        ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveScadenza" data-id="${s?.id||''}">Salva</button>
+      </div>
+    </form>
+  `);
+}
+
+function problemaFormModal(payload){
+  const p = payload?.id ? state.cache.problemi.find(x=>x.id===payload.id) : null;
+  return modalWrapper(`
+    <div class="modal-header"><h2>${p?'Modifica problema':'Nuovo problema'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <form id="entryForm">
+      <div class="field"><label>Data</label><input name="data" type="date" value="${p?.data||todayISO()}" required></div>
+      <div class="field"><label>Sintomi</label><textarea name="sintomi" rows="2" required>${escapeHTML(p?.sintomi||'')}</textarea></div>
+      <div class="field"><label>Causa (se nota)</label><textarea name="causa" rows="2">${escapeHTML(p?.causa||'')}</textarea></div>
+      <div class="field"><label>Soluzione</label><textarea name="soluzione" rows="2">${escapeHTML(p?.soluzione||'')}</textarea></div>
+      <div class="field"><label>Stato</label>
+        <select name="stato">
+          <option value="aperto" ${p?.stato==='aperto'?'selected':''}>Aperto</option>
+          <option value="risolto" ${p?.stato==='risolto'?'selected':''}>Risolto</option>
+        </select>
+      </div>
+      <div class="actions-footer">
+        ${p?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="problemi" data-id="${p.id}">${ICONS.trash}</button>`:''}
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveProblema" data-id="${p?.id||''}">Salva</button>
+      </div>
+    </form>
+  `);
+}
+
+function rifornimentoFormModal(payload){
+  const r = payload?.id ? state.cache.rifornimenti.find(x=>x.id===payload.id) : null;
+  return modalWrapper(`
+    <div class="modal-header"><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <form id="entryForm">
+      <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||todayISO()}" required></div>
+      <div class="field"><label>Km</label><input name="km" type="number" value="${r?.km??currentVeicolo()?.kmAttuali??0}" required></div>
+      <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
+      <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
+      <div class="actions-footer">
+        ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}">${ICONS.trash}</button>`:''}
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveRifornimento" data-id="${r?.id||''}">Salva</button>
+      </div>
+    </form>
+  `);
+}
+
+function kmUpdateModal(veicoloId){
+  const v = state.veicoli.find(x=>x.id===veicoloId);
+  return modalWrapper(`
+    <div class="modal-header"><h2>Aggiorna km</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:14px;">${ICONS.camera} Leggi da foto contachilometri (AI)<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
+    <form id="kmForm">
+      <div class="field"><label>Km attuali</label><input name="km" id="kmInput" type="number" value="${v.kmAttuali}" required></div>
+      <div class="actions-footer">
+        <button type="submit" class="btn btn-primary btn-block" data-action="saveKm" data-id="${v.id}">Conferma</button>
+      </div>
+    </form>
+  `);
+}
+
+/* ---------------- AI (Gemini API — chiave personale dell'utente) ---------------- */
+async function callGemini({ system, contents, maxOutputTokens=1024 }){
+  const key = state.settings.geminiApiKey;
+  if(!key) throw new Error("Nessuna chiave Gemini configurata. Vai in Impostazioni per aggiungerla.");
+  const body = { contents, generationConfig: { maxOutputTokens } };
+  if(system) body.systemInstruction = { parts: [{ text: system }] };
+  const res = await fetch(geminiURL(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if(!res.ok){
+    throw new Error(data?.error?.message || ("Errore API: " + res.status));
+  }
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts.map(p=>p.text||'').join('\n');
+}
+function extractJSON(text){
+  const cleaned = text.replace(/```json|```/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+async function actionAnalizzaManuale(){
+  const v = currentVeicolo();
+  const manuale = state.cache.manuale;
+  if(!v || !manuale) return;
+  state.busy = true; render();
+  try{
+    const base64 = await blobToBase64(manuale.file);
+    const text = await callGemini({
+      system: "Sei un assistente meccanico. Ricevi il manuale PDF di un veicolo. Rispondi SOLO con un array JSON valido (nessun testo extra, nessun markdown) di proposte di manutenzione periodica, in italiano, formato: [{\"descrizione\":\"...\",\"intervalloKm\":numero o null,\"intervalloMesi\":numero o null}]. Massimo 8 proposte, le piu' rilevanti.",
+      contents: [{ role:"user", parts:[
+        { inlineData:{ mimeType:"application/pdf", data: base64 } },
+        { text:`Veicolo: ${v.marca} ${v.modello} ${v.anno}. Estrai gli interventi di manutenzione periodica raccomandati.` }
+      ]}]
+    });
+    const proposte = extractJSON(text).map(p=>({...p, accettata:true}));
+    state.proposte = proposte;
+  } catch(e){
+    showToast("Errore: " + (e.message || "chiamata AI non riuscita"));
+  } finally {
+    state.busy = false; render();
+  }
+}
+
+async function actionSalvaProposte(){
+  const v = currentVeicolo();
+  const accettate = (state.proposte||[]).filter(p=>p.accettata);
+  for(const p of accettate){
+    await dbPut('scadenze', {
+      id: uid(), veicoloId: v.id, tipo:'tagliando', data: todayISO(),
+      ricorrenza: p.intervalloMesi ? 'custom' : 'nessuna', ricorrenzaMesi: p.intervalloMesi || null,
+      origine:'ai-vision', stato:'attiva', note: p.descrizione, intervalloKmSuggerito: p.intervalloKm || null
+    });
+  }
+  state.proposte = null;
+  await loadVeicoloData(v.id);
+  showToast(`${accettate.length} scadenze salvate`);
+  render();
+}
+
+async function actionSendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const v = currentVeicolo();
+  state.chatHistory.push({role:'user', content:text});
+  state.busy = true; render();
+  try{
+    const problemiSummary = state.cache.problemi.map(p=>`- [${p.stato}] ${p.sintomi}${p.soluzione?' → risolto con: '+p.soluzione:''}`).join('\n') || 'Nessuno';
+    const system = `Sei un meccanico esperto e assistente per motociclisti/automobilisti. Veicolo: ${v.marca} ${v.modello} ${v.anno} (${v.tipo}), km attuali ${v.kmAttuali}. Storico problemi:\n${problemiSummary}\nRispondi in italiano, in modo conciso e pratico.`;
+    const reply = await callGemini({
+      system,
+      contents: state.chatHistory.map(m=>({role: m.role==='user'?'user':'model', parts:[{text:m.content}]}))
+    });
+    state.chatHistory.push({role:'model', content:reply});
+  } catch(e){
+    state.chatHistory.push({role:'model', content:'Errore: ' + (e.message || 'chiamata non riuscita')});
+  } finally {
+    state.busy = false; input.value=''; render();
+    setTimeout(()=>{ const el=document.querySelector('.chat-scroll'); if(el) el.scrollTop = el.scrollHeight; }, 50);
+  }
+}
+
+async function actionScansionaKm(file, veicoloId){
+  state.busy = true; render();
+  try{
+    const base64 = await blobToBase64(file);
+    const text = await callGemini({
+      system: "Leggi il valore numerico del contachilometri nell'immagine. Rispondi SOLO con il numero intero, nient'altro.",
+      contents: [{ role:"user", parts:[
+        { inlineData:{ mimeType: file.type, data: base64 } },
+        { text:"Qual e' il valore sul contachilometri?" }
+      ]}]
+    });
+    const km = parseInt(text.replace(/\D/g,''));
+    if(!isNaN(km)){
+      const input = document.getElementById('kmInput');
+      if(input) input.value = km;
+      showToast("Km letti: " + km);
+    } else {
+      showToast("Non sono riuscito a leggere il valore");
+    }
+  } catch(e){
+    showToast("Errore: " + (e.message || "lettura foto non riuscita"));
+  } finally {
+    state.busy = false; render();
+  }
+}
+
+async function actionScansionaScadenza(file){
+  state.busy = true; render();
+  try{
+    const base64 = await blobToBase64(file);
+    const text = await callGemini({
+      system: "Estrai da questo documento (bollo, assicurazione, revisione...) tipo e data di scadenza. Rispondi SOLO con JSON: {\"tipo\":\"bollo|assicurazione|revisione|tagliando|altro\",\"data\":\"YYYY-MM-DD\"}",
+      contents: [{ role:"user", parts:[
+        { inlineData:{ mimeType: file.type, data: base64 } },
+        { text:"Estrai tipo e data di scadenza." }
+      ]}]
+    });
+    const parsed = extractJSON(text);
+    const form = document.getElementById('entryForm');
+    if(form){
+      form.tipo.value = parsed.tipo;
+      form.data.value = parsed.data;
+    }
+    showToast("Dati estratti dal documento");
+  } catch(e){
+    showToast("Errore: " + (e.message || "lettura documento non riuscita"));
+  } finally {
+    state.busy = false; render();
+  }
+}
+
+/* ---------------- BACKUP ---------------- */
+async function clearAllData(){
+  const db = await getDB();
+  const names = ['veicoli','manutenzioni','scadenze','problemi','rifornimenti','manuali','allegati'];
+  await Promise.all(names.map(n => new Promise((res,rej)=>{
+    const s = db.transaction(n,'readwrite').objectStore(n);
+    const r = s.clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+  })));
+}
+
+async function serializeBlobs(arr, field){
+  return Promise.all(arr.map(async x => {
+    if(x[field]) return {...x, [field]: { __blob:true, mime:x[field].type, data: await blobToBase64(x[field]) }};
+    return x;
+  }));
+}
+
+async function esportaJSON(){
+  const includiAllegati = state.settings.includiAllegatiBackup;
+  const [veicoli, manutenzioni, scadenze, problemi, rifornimenti] = await Promise.all(
+    ['veicoli','manutenzioni','scadenze','problemi','rifornimenti'].map(dbGetAll)
+  );
+  let manualiSer = [], allegatiSer = [];
+  if(includiAllegati){
+    const [manuali, allegati] = await Promise.all([dbGetAll('manuali'), dbGetAll('allegati')]);
+    manualiSer = await serializeBlobs(manuali, 'file');
+    allegatiSer = await serializeBlobs(allegati, 'blob');
+  }
+  const dump = { version:1, exportedAt: new Date().toISOString(), allegatiInclusi: includiAllegati, veicoli, manutenzioni, scadenze, problemi, rifornimenti, manuali: manualiSer, allegati: allegatiSer };
+  const blob = new Blob([JSON.stringify(dump)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `motolog-backup-${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Backup esportato");
+}
+
+async function importaJSON(file){
+  try{
+    const text = await file.text();
+    const dump = JSON.parse(text);
+    function deserializeBlobs(arr, field){
+      return arr.map(x => {
+        if(x[field] && x[field].__blob) return {...x, [field]: base64ToBlob(x[field].data, x[field].mime)};
+        return x;
+      });
+    }
+    const manuali = deserializeBlobs(dump.manuali||[], 'file');
+    const allegati = deserializeBlobs(dump.allegati||[], 'blob');
+    for(const v of dump.veicoli||[]) await dbPut('veicoli', v);
+    for(const m of dump.manutenzioni||[]) await dbPut('manutenzioni', m);
+    for(const s of dump.scadenze||[]) await dbPut('scadenze', s);
+    for(const p of dump.problemi||[]) await dbPut('problemi', p);
+    for(const r of dump.rifornimenti||[]) await dbPut('rifornimenti', r);
+    for(const m of manuali) await dbPut('manuali', m);
+    for(const a of allegati) await dbPut('allegati', a);
+    await loadVeicoli();
+    await loadVeicoloData(state.selectedVeicoloId);
+    showToast("Backup importato");
+    render();
+  } catch(e){
+    showToast("File di backup non valido");
+  }
+}
+
+/* ---------------- EVENT HANDLING (delegation) ---------------- */
+const app = document.getElementById('app');
+
+app.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  const type = el.dataset.type;
+
+  if(action==='closeModalBg' && e.target === el){ state.modal=null; render(); return; }
+  if(action==='closeModal'){ state.modal=null; state.proposte=null; render(); return; }
+  if(action==='setTab'){ state.tab=id; render(); return; }
+  if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
+  if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
+  if(action==='dismissBanner'){ state.bannerDismissed[id+todayISO()]=true; render(); return; }
+  if(action==='selectTipo'){
+    const hidden = document.getElementById('tipoHiddenInput');
+    if(hidden) hidden.value = el.dataset.value;
+    const row = el.closest('.sub-tabs');
+    if(row) row.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');
+    return;
+  }
+
+  if(action==='openTypeChooser'){ state.modal={view:'typeChooser'}; render(); return; }
+  if(action==='openForm'){ state.modal={view:type}; render(); return; }
+  if(action==='openVeicoloForm'){ state.modal={view:'veicoloForm', payload:{id}}; render(); return; }
+  if(action==='openVeicoloDetail'){ state.selectedVeicoloId=id; state.tab='veicoli-detail'; await loadVeicoloData(id); render(); return; }
+  if(action==='openEdit'){ state.modal={view:type, payload:{id}}; render(); return; }
+  if(action==='openKmUpdate'){ state.modal={view:'kmUpdate', payload:{id}}; render(); return; }
+
+  if(action==='toggleProposta'){ state.proposte[id].accettata = !state.proposte[id].accettata; render(); return; }
+  if(action==='salvaProposte'){ await actionSalvaProposte(); return; }
+  if(action==='analizzaManuale'){ await actionAnalizzaManuale(); return; }
+  if(action==='sendChat'){ await actionSendChat(); return; }
+
+  if(action==='deleteVeicolo'){
+    if(confirm("Eliminare questo veicolo e tutti i suoi dati?")){
+      await dbDelete('veicoli', id);
+      state.selectedVeicoloId = null; state.tab='veicoli';
+      await loadVeicoli(); await loadVeicoloData(state.selectedVeicoloId);
+      render();
+    }
+    return;
+  }
+  if(action==='deleteEntry'){
+    if(confirm("Eliminare questo elemento?")){
+      await dbDelete(type, id);
+      await loadVeicoloData(state.selectedVeicoloId);
+      state.modal=null; render();
+    }
+    return;
+  }
+  if(action==='deleteManuale'){
+    await dbDelete('manuali', id);
+    await loadVeicoloData(state.selectedVeicoloId);
+    render();
+    return;
+  }
+
+  if(action==='requestNotifPermission'){
+    try{ await Notification.requestPermission(); } catch(e){}
+    render();
+    return;
+  }
+  if(action==='rimuoviGeminiKey'){
+    if(confirm("Rimuovere la chiave Gemini salvata? Le funzioni AI smetteranno di funzionare finché non ne aggiungi una nuova.")){
+      await saveSetting('geminiApiKey', '');
+      render();
+    }
+    return;
+  }
+  if(action==='toggleIncludiAllegati'){
+    await saveSetting('includiAllegatiBackup', !state.settings.includiAllegatiBackup);
+    render();
+    return;
+  }
+  if(action==='cancellaTuttiDati'){
+    if(confirm("Cancellare TUTTI i dati dell'app (veicoli, manutenzioni, scadenze, problemi, rifornimenti, manuali, allegati)? Considera di esportare prima un backup.")){
+      if(confirm("Confermi? L'operazione non è reversibile.")){
+        await clearAllData();
+        state.selectedVeicoloId = null; state.chatHistory=[]; state.proposte=null; state.tab='dashboard';
+        await loadVeicoli(); await loadVeicoloData(null);
+        showToast("Tutti i dati sono stati cancellati");
+        render();
+      }
+    }
+    return;
+  }
+});
+
+app.addEventListener('change', async (e) => {
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  if(action==='setKmReminderDays'){
+    const val = Math.max(1, Math.min(60, parseInt(el.value)||10));
+    await saveSetting('kmReminderDays', val);
+    return;
+  }
+  if(action==='uploadManuale'){
+    const file = el.files[0];
+    if(!file) return;
+    await dbPut('manuali', { id: uid(), veicoloId:id, nome:file.name, file });
+    await loadVeicoloData(id);
+    showToast("Manuale caricato");
+    render();
+    return;
+  }
+  if(action==='scansionaKm'){
+    const file = el.files[0];
+    if(file) await actionScansionaKm(file, id);
+    return;
+  }
+  if(action==='scansionaScadenza'){
+    const file = el.files[0];
+    if(file) await actionScansionaScadenza(file);
+    return;
+  }
+});
+
+app.addEventListener('keydown', (e) => {
+  if(e.target.id==='chatInput' && e.key==='Enter'){ e.preventDefault(); actionSendChat(); }
+});
+
+app.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const v = currentVeicolo();
+
+  if(form.id==='geminiKeyForm'){
+    const key = fd.get('geminiApiKey').trim();
+    if(key){
+      await saveSetting('geminiApiKey', key);
+      showToast("Chiave salvata");
+      render();
+    }
+    return;
+  }
+
+  if(form.id==='veicoloForm'){
+    const btn = form.querySelector('[data-action="saveVeicolo"]');
+    const existingId = btn.dataset.id;
+    const obj = {
+      id: existingId || uid(),
+      tipo: fd.get('tipo'), marca: fd.get('marca'), modello: fd.get('modello'),
+      anno: parseInt(fd.get('anno')), targa: fd.get('targa'),
+      kmAttuali: parseFloat(fd.get('kmAttuali')),
+      dataUltimoAggiornamentoKm: todayISO(),
+    };
+    await dbPut('veicoli', obj);
+    state.modal=null;
+    await loadVeicoli();
+    state.selectedVeicoloId = obj.id;
+    await loadVeicoloData(obj.id);
+    render();
+    return;
+  }
+
+  if(form.id==='kmForm'){
+    const btn = form.querySelector('[data-action="saveKm"]');
+    const vid = btn.dataset.id;
+    const veic = state.veicoli.find(x=>x.id===vid);
+    veic.kmAttuali = parseFloat(fd.get('km'));
+    veic.dataUltimoAggiornamentoKm = todayISO();
+    await dbPut('veicoli', veic);
+    state.modal=null;
+    await loadVeicoli();
+    await loadVeicoloData(state.selectedVeicoloId);
+    showToast("Km aggiornati");
+    render();
+    return;
+  }
+
+  if(form.id==='entryForm'){
+    const modalView = state.modal.view;
+    const existingId = state.modal.payload?.id;
+
+    if(modalView==='manutenzioni'){
+      const attachInput = document.getElementById('attachInput');
+      const allegati = [];
+      if(attachInput && attachInput.files.length){
+        for(const file of attachInput.files){
+          const attId = uid();
+          await dbPut('allegati', { id:attId, tipo: file.type.startsWith('image')?'foto':'documento', blob:file, nome:file.name });
+          allegati.push(attId);
+        }
+      }
+      const obj = {
+        id: existingId || uid(), veicoloId: v.id,
+        data: fd.get('data'), km: parseFloat(fd.get('km')),
+        categoria: fd.get('categoria'), descrizione: fd.get('descrizione'),
+        costo: fd.get('costo') ? parseFloat(fd.get('costo')) : null,
+        prossimaScadenzaKm: fd.get('prossimaScadenzaKm') ? parseFloat(fd.get('prossimaScadenzaKm')) : null,
+        allegati: allegati.length ? allegati : (existingId ? state.cache.manutenzioni.find(m=>m.id===existingId)?.allegati||[] : []),
+      };
+      await dbPut('manutenzioni', obj);
+    } else if(modalView==='scadenze'){
+      const obj = {
+        id: existingId || uid(), veicoloId: v.id,
+        tipo: fd.get('tipo'), data: fd.get('data'), ricorrenza: fd.get('ricorrenza'),
+        origine:'manuale', stato:'attiva',
+      };
+      await dbPut('scadenze', obj);
+    } else if(modalView==='problemi'){
+      const obj = {
+        id: existingId || uid(), veicoloId: v.id,
+        data: fd.get('data'), sintomi: fd.get('sintomi'), causa: fd.get('causa'),
+        soluzione: fd.get('soluzione'), stato: fd.get('stato'),
+      };
+      await dbPut('problemi', obj);
+    } else if(modalView==='rifornimenti'){
+      const obj = {
+        id: existingId || uid(), veicoloId: v.id,
+        data: fd.get('data'), km: parseFloat(fd.get('km')),
+        litri: parseFloat(fd.get('litri')), costo: parseFloat(fd.get('costo')),
+      };
+      await dbPut('rifornimenti', obj);
+    }
+    state.modal=null;
+    await loadVeicoloData(v.id);
+    render();
+    return;
+  }
+});
+
+/* ---------------- RENDER PRINCIPALE ---------------- */
+function modalContent(){
+  if(!state.modal) return '';
+  const { view, payload } = state.modal;
+  if(view==='typeChooser') return typeChooserModal();
+  if(view==='veicoloForm') return veicoloFormModal(payload);
+  if(view==='manutenzioni') return manutenzioneFormModal(payload);
+  if(view==='scadenze') return scadenzaFormModal(payload);
+  if(view==='problemi') return problemaFormModal(payload);
+  if(view==='rifornimenti') return rifornimentoFormModal(payload);
+  if(view==='kmUpdate') return kmUpdateModal(payload.id);
+  return '';
+}
+
+function headerHTML(){
+  if(state.tab==='veicoli-detail'){
+    const v = currentVeicolo();
+    return `<div class="topbar">
+      <button class="icon-btn" data-action="setTab" data-id="veicoli">${ICONS.back}</button>
+      <h1>${v?escapeHTML(v.marca)+' '+escapeHTML(v.modello):''}</h1>
+      <div style="width:38px;"></div>
+    </div>`;
+  }
+  const titles = {dashboard:'MotoLog', veicoli:'I tuoi veicoli', log:'Diario', ai:'Assistente AI', impostazioni:'Impostazioni'};
+  return `<div class="topbar">
+    <h1>${titles[state.tab]||'MotoLog'}</h1>
+  </div>`;
+}
+
+function vehicleSwitcherHTML(){
+  if(state.tab==='veicoli-detail' || state.tab==='ai' && false) return '';
+  if(!['dashboard','log','ai'].includes(state.tab) || state.veicoli.length<1) return '';
+  if(state.veicoli.length===0) return '';
+  return `<div class="veh-switcher">
+    ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?'🏍':'🚗'} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
+  </div>`;
+}
+
+app.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-action="selectVeicolo"]');
+  if(el){ state.selectedVeicoloId = el.dataset.id; await loadVeicoloData(el.dataset.id); render(); }
+  const exp = e.target.closest('[data-action="exportBackup"]');
+  if(exp){ await esportaJSON(); }
+});
+app.addEventListener('change', async (e) => {
+  if(e.target.id==='importInput' && e.target.files[0]){ await importaJSON(e.target.files[0]); }
+});
+
+function render(){
+  let body = '';
+  if(state.tab==='dashboard') body = viewDashboard();
+  else if(state.tab==='veicoli') body = viewVeicoli();
+  else if(state.tab==='veicoli-detail') body = viewVeicoloDetail(currentVeicolo());
+  else if(state.tab==='log') body = viewLog();
+  else if(state.tab==='ai') body = viewAI();
+  else if(state.tab==='impostazioni') body = viewImpostazioni();
+
+  app.innerHTML = `
+    ${headerHTML()}
+    ${vehicleSwitcherHTML()}
+    ${body}
+    ${tabBarHTML()}
+    ${fabHTML()}
+    ${state.modal ? modalContent() : ''}
+    ${state.toast ? `<div class="toast">${escapeHTML(state.toast)}</div>` : ''}
+  `;
+
+  if(state.tab==='ai' && state.aiSubtab==='chat'){
+    const scroll = document.querySelector('.chat-scroll');
+    if(scroll) scroll.scrollTop = scroll.scrollHeight;
+  }
+}
+
+/* ---------------- SERVICE WORKER ---------------- */
+function setupServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('sw.js').catch((e)=>{ console.warn('Service worker non registrato:', e); });
+}
+
+/* ---------------- INIT ---------------- */
+(async function init(){
+  try{
+    setupServiceWorker();
+    await loadSettings();
+    await loadVeicoli();
+    await loadVeicoloData(state.selectedVeicoloId);
+    render();
+    if('Notification' in window && Notification.permission==='default'){
+      setTimeout(()=>Notification.requestPermission().catch(()=>{}), 1500);
+    }
+  } catch(e){
+    console.error('Errore avvio MotoLog:', e);
+    app.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text);">
+      <h2 style="margin-bottom:10px;">Errore di avvio</h2>
+      <p class="muted" style="font-size:14px;">${escapeHTML(e.message || String(e))}</p>
+      <p class="muted" style="font-size:13px;margin-top:16px;">I dati salvati non sono stati toccati. Prova a ricaricare la pagina.</p>
+    </div>`;
+  }
+})();
+</script>
+</body>
+</html>
