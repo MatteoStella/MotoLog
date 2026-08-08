@@ -929,7 +929,7 @@ function kmUpdateModal(veicoloId){
 }
 
 /* ---------------- AI (Gemini API — chiave personale dell'utente) ---------------- */
-async function callGemini({ system, contents, maxOutputTokens=1024 }){
+async function callGemini({ system, contents, maxOutputTokens=1024, _retry=0 }){
   const key = state.settings.geminiApiKey;
   if(!key) throw new Error("Nessuna chiave Gemini configurata. Vai in Impostazioni per aggiungerla.");
   const body = { contents, generationConfig: { maxOutputTokens } };
@@ -941,7 +941,13 @@ async function callGemini({ system, contents, maxOutputTokens=1024 }){
   });
   const data = await res.json();
   if(!res.ok){
-    throw new Error(data?.error?.message || ("Errore API: " + res.status));
+    const isOverload = res.status===503 || res.status===429;
+    if(isOverload && _retry < 2){
+      await new Promise(r=>setTimeout(r, 1500 * (_retry+1)));
+      return callGemini({ system, contents, maxOutputTokens, _retry: _retry+1 });
+    }
+    const msg = data?.error?.message || ("Errore API: " + res.status);
+    throw new Error(isOverload ? `${msg} (Google, dopo ${_retry+1} tentativi — riprova tra un minuto)` : msg);
   }
   const parts = data.candidates?.[0]?.content?.parts || [];
   return parts.map(p=>p.text||'').join('\n');
