@@ -127,7 +127,7 @@
   .type-opt .icon{width:26px;height:26px;color:var(--accent);}
 
   .attach-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
-  .attach-thumb{width:56px;height:56px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+  .attach-thumb{width:56px;height:56px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;}
   .attach-thumb img{width:100%;height:100%;object-fit:cover;}
   .attach-remove{position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(0,0,0,.6);border-radius:50%;display:flex;align-items:center;justify-content:center;}
 
@@ -283,6 +283,8 @@ const state = {
   cache: { manutenzioni:[], scadenze:[], problemi:[], rifornimenti:[], manuale:null },
   busy: false,
   settings: { ...DEFAULT_SETTINGS },
+  editAttachments: [],
+  lightbox: null,
 };
 
 async function loadSettings(){
@@ -321,6 +323,19 @@ async function loadVeicoloData(veicoloId){
   state.cache = { manutenzioni, scadenze, problemi, rifornimenti, manuale: manuali[0] || null };
 }
 function currentVeicolo(){ return state.veicoli.find(v=>v.id===state.selectedVeicoloId) || null; }
+
+async function loadEditAttachments(manutenzione){
+  state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(e){} });
+  state.editAttachments = [];
+  if(manutenzione && manutenzione.allegati && manutenzione.allegati.length){
+    for(const aid of manutenzione.allegati){
+      const a = await dbGet('allegati', aid);
+      if(a && a.blob){
+        state.editAttachments.push({ id:a.id, nome:a.nome, tipo:a.tipo, url:URL.createObjectURL(a.blob), existing:true });
+      }
+    }
+  }
+}
 
 /* ---------------- LOGICA SCADENZE / PROIEZIONE KM ---------------- */
 function nextScadenzaKm(veicolo){
@@ -789,6 +804,15 @@ function veicoloFormModal(payload){
   `);
 }
 
+function attachThumbsHTML(){
+  if(!state.editAttachments.length) return '';
+  return state.editAttachments.map(a => `
+    <div class="attach-thumb" data-action="viewAttachment" data-id="${a.id||a.tempId}">
+      ${a.tipo==='foto' ? `<img src="${a.url}" alt="${escapeHTML(a.nome)}">` : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${ICONS.file}</div>`}
+      <button class="attach-remove" data-action="removeAttachment" data-id="${a.id||a.tempId}">${ICONS.close}</button>
+    </div>`).join('');
+}
+
 function manutenzioneFormModal(payload){
   const m = payload?.id ? state.cache.manutenzioni.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
@@ -804,9 +828,9 @@ function manutenzioneFormModal(payload){
       <div class="field"><label>Descrizione</label><textarea name="descrizione" rows="2">${escapeHTML(m?.descrizione||'')}</textarea></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${m?.costo??''}"></div>
       <div class="field"><label>Prossima scadenza — km</label><input name="prossimaScadenzaKm" type="number" value="${m?.prossimaScadenzaKm??''}"></div>
-      <div class="field"><label>Allega foto/documento</label>
-        <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.camera} Aggiungi foto<input type="file" accept="image/*" multiple style="display:none;" id="attachInput"></label>
-        <div class="attach-row" id="attachPreview"></div>
+      <div class="field"><label>Foto e documenti</label>
+        <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.camera} Aggiungi foto<input type="file" accept="image/*" multiple style="display:none;" data-action="addAttachments"></label>
+        <div class="attach-row" id="attachPreview">${attachThumbsHTML()}</div>
       </div>
       <div class="actions-footer">
         ${m?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="manutenzioni" data-id="${m.id}">${ICONS.trash}</button>`:''}
@@ -1110,7 +1134,26 @@ app.addEventListener('click', async (e) => {
   const type = el.dataset.type;
 
   if(action==='closeModalBg' && e.target === el){ state.modal=null; render(); return; }
-  if(action==='closeModal'){ state.modal=null; state.proposte=null; render(); return; }
+  if(action==='closeModal'){
+    state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(err){} });
+    state.editAttachments = [];
+    state.modal=null; state.proposte=null; render(); return;
+  }
+  if(action==='viewAttachment'){
+    const key = el.dataset.id;
+    const a = state.editAttachments.find(x => (x.id||x.tempId) === key);
+    if(a && a.tipo==='foto'){ state.lightbox = a; render(); }
+    return;
+  }
+  if(action==='removeAttachment'){
+    const key = el.dataset.id;
+    state.editAttachments = state.editAttachments.filter(a => (a.id||a.tempId) !== key);
+    const preview = document.getElementById('attachPreview');
+    if(preview) preview.innerHTML = attachThumbsHTML();
+    return;
+  }
+  if(action==='closeLightboxBg' && e.target===el){ state.lightbox=null; render(); return; }
+  if(action==='closeLightbox'){ state.lightbox=null; render(); return; }
   if(action==='setTab'){ state.tab=id; render(); return; }
   if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
@@ -1125,10 +1168,16 @@ app.addEventListener('click', async (e) => {
   }
 
   if(action==='openTypeChooser'){ state.modal={view:'typeChooser'}; render(); return; }
-  if(action==='openForm'){ state.modal={view:type}; render(); return; }
+  if(action==='openForm'){
+    if(type==='manutenzioni') await loadEditAttachments(null);
+    state.modal={view:type}; render(); return;
+  }
   if(action==='openVeicoloForm'){ state.modal={view:'veicoloForm', payload:{id}}; render(); return; }
   if(action==='openVeicoloDetail'){ state.selectedVeicoloId=id; state.tab='veicoli-detail'; await loadVeicoloData(id); render(); return; }
-  if(action==='openEdit'){ state.modal={view:type, payload:{id}}; render(); return; }
+  if(action==='openEdit'){
+    if(type==='manutenzioni') await loadEditAttachments(state.cache.manutenzioni.find(x=>x.id===id));
+    state.modal={view:type, payload:{id}}; render(); return;
+  }
   if(action==='openKmUpdate'){ state.modal={view:'kmUpdate', payload:{id}}; render(); return; }
 
   if(action==='toggleProposta'){ state.proposte[id].accettata = !state.proposte[id].accettata; render(); return; }
@@ -1200,6 +1249,20 @@ app.addEventListener('change', async (e) => {
   if(action==='setKmReminderDays'){
     const val = Math.max(1, Math.min(60, parseInt(el.value)||10));
     await saveSetting('kmReminderDays', val);
+    return;
+  }
+  if(action==='addAttachments'){
+    const files = Array.from(el.files || []);
+    for(const file of files){
+      state.editAttachments.push({
+        tempId: uid(), nome: file.name,
+        tipo: file.type.startsWith('image') ? 'foto' : 'documento',
+        url: URL.createObjectURL(file), file, existing:false
+      });
+    }
+    el.value = '';
+    const preview = document.getElementById('attachPreview');
+    if(preview) preview.innerHTML = attachThumbsHTML();
     return;
   }
   if(action==='uploadManuale'){
@@ -1282,14 +1345,20 @@ app.addEventListener('submit', async (e) => {
     const existingId = state.modal.payload?.id;
 
     if(modalView==='manutenzioni'){
-      const attachInput = document.getElementById('attachInput');
       const allegati = [];
-      if(attachInput && attachInput.files.length){
-        for(const file of attachInput.files){
+      for(const a of state.editAttachments){
+        if(a.existing){
+          allegati.push(a.id);
+        } else {
           const attId = uid();
-          await dbPut('allegati', { id:attId, tipo: file.type.startsWith('image')?'foto':'documento', blob:file, nome:file.name });
+          await dbPut('allegati', { id:attId, tipo:a.tipo, blob:a.file, nome:a.nome });
           allegati.push(attId);
         }
+      }
+      if(existingId){
+        const prevAllegati = state.cache.manutenzioni.find(mm=>mm.id===existingId)?.allegati || [];
+        const removedIds = prevAllegati.filter(pid => !allegati.includes(pid));
+        for(const rid of removedIds) await dbDelete('allegati', rid);
       }
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
@@ -1297,9 +1366,11 @@ app.addEventListener('submit', async (e) => {
         categoria: fd.get('categoria'), descrizione: fd.get('descrizione'),
         costo: fd.get('costo') ? parseFloat(fd.get('costo')) : null,
         prossimaScadenzaKm: fd.get('prossimaScadenzaKm') ? parseFloat(fd.get('prossimaScadenzaKm')) : null,
-        allegati: allegati.length ? allegati : (existingId ? state.cache.manutenzioni.find(m=>m.id===existingId)?.allegati||[] : []),
+        allegati,
       };
       await dbPut('manutenzioni', obj);
+      state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(err){} });
+      state.editAttachments = [];
     } else if(modalView==='scadenze'){
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
@@ -1394,6 +1465,10 @@ function render(){
     ${fabHTML()}
     ${state.modal ? modalContent() : ''}
     ${state.toast ? `<div class="toast">${escapeHTML(state.toast)}</div>` : ''}
+    ${state.lightbox ? `<div class="modal-overlay" style="align-items:center;justify-content:center;" data-action="closeLightboxBg">
+      <img src="${state.lightbox.url}" alt="${escapeHTML(state.lightbox.nome||'')}" style="max-width:92%;max-height:82vh;border-radius:8px;object-fit:contain;">
+      <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.25);" data-action="closeLightbox">${ICONS.close}</button>
+    </div>` : ''}
   `;
 
   if(state.tab==='ai' && state.aiSubtab==='chat'){
