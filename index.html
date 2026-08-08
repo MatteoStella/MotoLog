@@ -285,6 +285,7 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   editAttachments: [],
   lightbox: null,
+  manualeError: null,
 };
 
 async function loadSettings(){
@@ -297,7 +298,7 @@ async function saveSetting(key, value){
   await dbPut('settings', { key, value });
 }
 
-function showToast(text){ state.toast = text; render(); setTimeout(()=>{ state.toast=null; render(); }, 2200); }
+function showToast(text){ state.toast = text; render(); setTimeout(()=>{ state.toast=null; render(); }, 3200); }
 
 async function loadVeicoli(){
   state.veicoli = await dbGetAll('veicoli');
@@ -658,6 +659,12 @@ function viewAIManuale(v){
         <button class="btn btn-primary btn-block" data-action="analizzaManuale" ${state.busy?'disabled':''}>
           ${state.busy ? '<div class="spinner"></div> Analisi in corso...' : 'Analizza e proponi scadenze'}
         </button>
+        ${state.manualeError ? `
+        <div class="banner" style="margin-top:12px;margin-bottom:0;">
+          <div class="banner-icon">${ICONS.alert}</div>
+          <div class="banner-text">${escapeHTML(state.manualeError)}</div>
+          <button class="banner-close" data-action="dismissManualeError">${ICONS.close}</button>
+        </div>` : ''}
         <div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px;">Richiede connessione internet</div>
       ` : `
         <label class="btn btn-ghost btn-block" style="cursor:pointer;">
@@ -941,14 +948,23 @@ async function callGemini({ system, contents, maxOutputTokens=1024 }){
 }
 function extractJSON(text){
   const cleaned = text.replace(/```json|```/g,'').trim();
-  return JSON.parse(cleaned);
+  try{
+    return JSON.parse(cleaned);
+  } catch(e){
+    const start = cleaned.search(/[\[{]/);
+    const end = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'));
+    if(start !== -1 && end > start){
+      return JSON.parse(cleaned.slice(start, end+1));
+    }
+    throw new Error("Risposta AI non nel formato atteso");
+  }
 }
 
 async function actionAnalizzaManuale(){
   const v = currentVeicolo();
   const manuale = state.cache.manuale;
   if(!v || !manuale) return;
-  state.busy = true; render();
+  state.busy = true; state.manualeError = null; render();
   try{
     const base64 = await blobToBase64(manuale.file);
     const text = await callGemini({
@@ -961,7 +977,7 @@ async function actionAnalizzaManuale(){
     const proposte = extractJSON(text).map(p=>({...p, accettata:true}));
     state.proposte = proposte;
   } catch(e){
-    showToast("Errore: " + (e.message || "chiamata AI non riuscita"));
+    state.manualeError = e.message || "Analisi non riuscita. Riprova.";
   } finally {
     state.busy = false; render();
   }
@@ -1154,6 +1170,7 @@ app.addEventListener('click', async (e) => {
   }
   if(action==='closeLightboxBg' && e.target===el){ state.lightbox=null; render(); return; }
   if(action==='closeLightbox'){ state.lightbox=null; render(); return; }
+  if(action==='dismissManualeError'){ state.manualeError=null; render(); return; }
   if(action==='setTab'){ state.tab=id; render(); return; }
   if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
