@@ -439,8 +439,8 @@ function viewDashboard(){
   const prossimaScadenzaData = state.cache.scadenze.find(s=>s.stato==='attiva');
 
   const eventi = [
-    ...state.cache.manutenzioni.map(m=>({tipo:'manutenzione', data:m.data, label: categoriaLabel(m.categoria, m.categoriaCustom), sub: fmtKm(m.km)})),
-    ...state.cache.problemi.map(p=>({tipo:'problema', data:p.data, label: p.sintomi, sub: p.stato})),
+    ...state.cache.manutenzioni.map(m=>({_type:'manutenzioni', id:m.id, data:m.data, label: categoriaLabel(m.categoria, m.categoriaCustom), sub: fmtKm(m.km)})),
+    ...state.cache.problemi.map(p=>({_type:'problemi', id:p.id, data:p.data, label: p.sintomi, sub: p.stato})),
   ].sort((a,b)=> new Date(b.data)-new Date(a.data)).slice(0,4);
 
   return `
@@ -461,14 +461,14 @@ function viewDashboard(){
 
     <div class="section-title">Eventi recenti</div>
     ${eventi.length ? `<div class="card">${eventi.map(e=>`
-      <div class="log-item">
-        <div class="log-dot" style="background:${e.tipo==='problema'?'var(--danger-dim)':'var(--accent-dim)'};color:${e.tipo==='problema'?'var(--danger)':'var(--accent)'};">${e.tipo==='problema'?ICONS.alert:ICONS.wrench}</div>
+      <button class="log-item" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
+        <div class="log-dot" style="background:${e._type==='problemi'?'var(--danger-dim)':'var(--accent-dim)'};color:${e._type==='problemi'?'var(--danger)':'var(--accent)'};">${e._type==='problemi'?ICONS.alert:ICONS.wrench}</div>
         <div class="log-body">
           <div class="log-title">${escapeHTML(e.label)}</div>
           <div class="log-sub">${e.sub}</div>
         </div>
         <div class="log-meta">${fmtDate(e.data)}</div>
-      </div>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento registrato</div>`}
+      </button>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento registrato</div>`}
   </div>`;
 }
 
