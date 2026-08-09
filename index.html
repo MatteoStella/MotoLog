@@ -119,7 +119,7 @@
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(var(--bg-rgb),.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 6px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
   .tab-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-muted);font-size:10.5px;padding:6px 14px;border-radius:12px;}
   .tab-item.active{color:var(--accent);}
-  .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(78px + var(--safe-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--on-accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(var(--accent-shadow-rgb),.4);z-index:11;}
+  .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(78px + var(--safe-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--on-accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.28);z-index:11;}
   @media (max-width:559px){ .fab{right:18px;} }
 
   /* Modal */
@@ -405,7 +405,7 @@ function gaugeSVG({ value, max, label, sublabel, size=150, colorOverride=null })
   <div style="position:relative;width:${size}px;height:${size}px;">
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(135deg);">
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="10" stroke-dasharray="${arc} ${c}" stroke-linecap="round"/>
-      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${filled} ${c}" stroke-linecap="round" style="transition:stroke-dasharray .7s cubic-bezier(.4,0,.2,1);filter:drop-shadow(0 0 7px color-mix(in srgb, ${color} 50%, transparent));"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${filled} ${c}" stroke-linecap="round" style="transition:stroke-dasharray .7s cubic-bezier(.4,0,.2,1);"/>
     </svg>
     <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
       <div class="mono" style="font-size:${size*0.15}px;font-weight:700;">${label}</div>
