@@ -4,20 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MotoLog</title>
-<meta name="theme-color" content="#14161A">
+<meta name="theme-color" content="#121214">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#15130F;
-    --bg-rgb:21,19,15;
-    --bg-2:#1B1814;
-    --surface:#211D18;
-    --surface-2:#2A251E;
-    --border:#35302A;
-    --text:#F2EEE6;
-    --text-muted:#948C80;
+    --bg:#121214;
+    --bg-rgb:18,18,20;
+    --bg-2:#18181B;
+    --surface:#1C1C21;
+    --surface-2:#232328;
+    --border:#313136;
+    --text:#EDEDEF;
+    --text-muted:#8B8B93;
     --accent:#2F80FF;
     --accent-dim:rgba(47,128,255,.16);
     --on-accent:#FFFFFF;
@@ -193,7 +193,7 @@ function geminiURL(){ return `https://generativelanguage.googleapis.com/v1beta/m
 const DEFAULT_SETTINGS = { kmReminderDays: 10, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
-  dark:  { bg:'#15130F', 'bg-rgb':'21,19,15', 'bg-2':'#1B1814', surface:'#211D18', 'surface-2':'#2A251E', border:'#35302A', text:'#F2EEE6', 'text-muted':'#948C80', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
+  dark:  { bg:'#121214', 'bg-rgb':'18,18,20', 'bg-2':'#18181B', surface:'#1C1C21', 'surface-2':'#232328', border:'#313136', text:'#EDEDEF', 'text-muted':'#8B8B93', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
   light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)' },
 };
 const ACCENT_TOKENS = {
