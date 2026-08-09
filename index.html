@@ -11,6 +11,7 @@
 <style>
   :root{
     --bg:#15130F;
+    --bg-rgb:21,19,15;
     --bg-2:#1B1814;
     --surface:#211D18;
     --surface-2:#2A251E;
@@ -19,6 +20,8 @@
     --text-muted:#948C80;
     --accent:#2F80FF;
     --accent-dim:rgba(47,128,255,.16);
+    --on-accent:#FFFFFF;
+    --accent-shadow-rgb:47,128,255;
     --ok:#6BAA75;
     --ok-dim:rgba(107,170,117,.14);
     --warn:#E8A33D;
@@ -47,7 +50,7 @@
   label:first-child{margin-top:0;}
   .field{margin-bottom:2px;}
   .btn{border:none;border-radius:var(--radius-sm);padding:12px 18px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
-  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary{background:var(--accent);color:var(--on-accent);}
   .btn-primary:active{transform:scale(.98);}
   .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
   .btn-danger{background:var(--danger-dim);color:var(--danger);}
@@ -110,10 +113,10 @@
   .badge-danger{background:var(--danger-dim);color:var(--danger);}
 
   /* Tab bar */
-  .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(21,19,15,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 6px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(var(--bg-rgb),.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 6px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
   .tab-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-muted);font-size:10.5px;padding:6px 14px;border-radius:12px;}
   .tab-item.active{color:var(--accent);}
-  .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(78px + var(--safe-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(47,128,255,.4);z-index:11;}
+  .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(78px + var(--safe-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--on-accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(var(--accent-shadow-rgb),.4);z-index:11;}
   @media (max-width:559px){ .fab{right:18px;} }
 
   /* Modal */
@@ -136,13 +139,13 @@
   /* Chat */
   .chat-scroll{display:flex;flex-direction:column;gap:10px;padding-bottom:12px;}
   .msg{max-width:82%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.45;}
-  .msg-user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+  .msg-user{align-self:flex-end;background:var(--accent);color:var(--on-accent);border-bottom-right-radius:4px;}
   .msg-ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
   .chat-input-row{position:sticky;bottom:0;display:flex;gap:8px;background:var(--bg);padding:10px 0 4px;}
 
   .toast{position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:999px;font-size:13px;z-index:30;}
 
-  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
+  .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
 
   .sub-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
@@ -152,7 +155,7 @@
   .proposal-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
   .proposal-item:last-child{border-bottom:none;}
   .checkbox{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
-  .checkbox.checked{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .checkbox.checked{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 </style>
 </head>
 <body>
@@ -184,7 +187,27 @@
 /* ---------------- CONFIG ---------------- */
 const GEMINI_MODEL = "gemini-flash-latest"; // alias ufficiale, punta sempre all'ultima versione stabile
 function geminiURL(){ return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`; }
-const DEFAULT_SETTINGS = { kmReminderDays: 10, includiAllegatiBackup: true, geminiApiKey: '' };
+const DEFAULT_SETTINGS = { kmReminderDays: 10, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
+
+const MODE_TOKENS = {
+  dark:  { bg:'#15130F', 'bg-rgb':'21,19,15', 'bg-2':'#1B1814', surface:'#211D18', 'surface-2':'#2A251E', border:'#35302A', text:'#F2EEE6', 'text-muted':'#948C80', ok:'#6BAA75', 'ok-dim':'rgba(107,170,117,.14)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
+  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)' },
+};
+const ACCENT_TOKENS = {
+  blu:     { accent:'#2F80FF', 'accent-dim':'rgba(47,128,255,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'47,128,255',  label:'Blu elettrico' },
+  viola:   { accent:'#7B5FFF', 'accent-dim':'rgba(123,95,255,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'123,95,255',  label:'Viola indaco' },
+  ciano:   { accent:'#00B4CC', 'accent-dim':'rgba(0,180,204,.16)',   'on-accent':'#08181A', 'accent-shadow-rgb':'0,180,204',   label:'Ciano digitale' },
+  magenta: { accent:'#E0368E', 'accent-dim':'rgba(224,54,142,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'224,54,142',  label:'Magenta acceso' },
+};
+function applyTheme(){
+  const mode = MODE_TOKENS[state.settings.themeMode] || MODE_TOKENS.dark;
+  const accent = ACCENT_TOKENS[state.settings.themeAccent] || ACCENT_TOKENS.blu;
+  const root = document.documentElement.style;
+  Object.entries(mode).forEach(([k,v]) => root.setProperty('--'+k, v));
+  Object.entries(accent).forEach(([k,v]) => { if(k!=='label') root.setProperty('--'+k, v); });
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if(metaTheme) metaTheme.setAttribute('content', mode.bg);
+}
 
 /* ---------------- UTILS ---------------- */
 const uid = () => crypto.randomUUID();
@@ -695,6 +718,26 @@ function viewImpostazioni(){
   const notifLabel = { granted:'Attive', denied:'Bloccate — riattivale dalle impostazioni del sito nel browser', default:'Non ancora richieste', unsupported:'Non supportate su questo browser' }[notifStatus];
   const hasKey = !!state.settings.geminiApiKey;
   return `<div class="content">
+    <div class="section-title">Aspetto</div>
+    <div class="card">
+      <div class="field" style="margin-top:0;">
+        <label>Modalità</label>
+        <div class="sub-tabs" style="margin-bottom:0;">
+          <button type="button" class="sub-tab ${state.settings.themeMode==='dark'?'active':''}" data-action="setThemeMode" data-value="dark">Scuro</button>
+          <button type="button" class="sub-tab ${state.settings.themeMode==='light'?'active':''}" data-action="setThemeMode" data-value="light">Chiaro</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Colore d'accento</label>
+        <div style="display:flex;gap:12px;margin-top:4px;">
+          ${Object.entries(ACCENT_TOKENS).map(([key,t])=>`
+            <button type="button" data-action="setThemeAccent" data-value="${key}" title="${t.label}" style="width:40px;height:40px;border-radius:50%;background:${t.accent};border:3px solid ${state.settings.themeAccent===key?'var(--text)':'transparent'};box-shadow:0 0 0 1px var(--border);"></button>
+          `).join('')}
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px;">${ACCENT_TOKENS[state.settings.themeAccent]?.label||''}</div>
+      </div>
+    </div>
+
     <div class="section-title">Assistente AI</div>
     <div class="card">
       ${hasKey ? `
@@ -1236,6 +1279,18 @@ app.addEventListener('click', async (e) => {
     return;
   }
 
+  if(action==='setThemeMode'){
+    await saveSetting('themeMode', el.dataset.value);
+    applyTheme();
+    render();
+    return;
+  }
+  if(action==='setThemeAccent'){
+    await saveSetting('themeAccent', el.dataset.value);
+    applyTheme();
+    render();
+    return;
+  }
   if(action==='requestNotifPermission'){
     try{ await Notification.requestPermission(); } catch(e){}
     render();
@@ -1522,6 +1577,7 @@ function setupServiceWorker(){
   try{
     setupServiceWorker();
     await loadSettings();
+    applyTheme();
     await loadVeicoli();
     await loadVeicoloData(state.selectedVeicoloId);
     render();
