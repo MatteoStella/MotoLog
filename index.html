@@ -70,18 +70,21 @@
   .veh-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
 
   .content{padding:0 18px 24px;}
-  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:22px 0 10px;}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:22px 0 10px;display:flex;align-items:center;gap:7px;}
+  .section-title::before{content:'';display:inline-block;width:10px;height:2px;background:var(--accent);border-radius:2px;flex-shrink:0;}
 
   /* Cards */
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.05);}
   .card + .card{margin-top:10px;}
   .card-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .card-tap{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);}
+  .card-tap{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);transition:transform .12s ease;}
+  .card-tap:active, .log-item:active{transform:scale(.985);}
 
   /* Gauge cluster */
-  .gauge-hero{display:flex;flex-direction:column;align-items:center;padding:22px 16px 10px;}
+  .gauge-hero{position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;padding:24px 16px 12px;overflow:hidden;}
+  .gauge-hero::before{content:'';position:absolute;z-index:-1;top:-90px;left:50%;transform:translateX(-50%);width:260px;height:260px;background:radial-gradient(circle, var(--accent) 0%, transparent 68%);opacity:.14;pointer-events:none;}
   .gauge-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
-  .gauge-mini{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .gauge-mini{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.05);}
 
   /* Banner */
   .banner{background:var(--warn-dim);border:1px solid rgba(232,163,61,.35);border-radius:var(--radius);padding:14px 14px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
@@ -402,10 +405,10 @@ function gaugeSVG({ value, max, label, sublabel, size=150, colorOverride=null })
   <div style="position:relative;width:${size}px;height:${size}px;">
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(135deg);">
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="10" stroke-dasharray="${arc} ${c}" stroke-linecap="round"/>
-      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${filled} ${c}" stroke-linecap="round"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${filled} ${c}" stroke-linecap="round" style="transition:stroke-dasharray .7s cubic-bezier(.4,0,.2,1);filter:drop-shadow(0 0 7px color-mix(in srgb, ${color} 50%, transparent));"/>
     </svg>
     <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-      <div class="mono" style="font-size:${size*0.15}px;font-weight:600;">${label}</div>
+      <div class="mono" style="font-size:${size*0.15}px;font-weight:700;">${label}</div>
       <div class="muted" style="font-size:11px;text-align:center;max-width:${size*0.7}px;margin-top:2px;">${sublabel}</div>
     </div>
   </div>`;
@@ -471,21 +474,30 @@ function viewDashboard(){
   <div class="content">
     ${bannerHTML(v)}
     <div class="card gauge-hero">
+      <div class="muted" style="align-self:flex-start;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Prossima scadenza</div>
       ${nextManut ? gaugeSVG({value:kmRimanenti, max:maxRange, label: fmtKm(kmRimanenti).replace(' km',''), sublabel:`km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"`}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Nessuna scadenza km impostata', colorOverride:'var(--text-muted)'})}
       <div class="muted mono" style="margin-top:10px;font-size:12.5px;">km stimati oggi: ${fmtKm(kmStimati)}</div>
     </div>
     <div class="gauge-mini-row">
       <div class="gauge-mini">
-        ${gaugeSVG({value: Math.min(costoKm,0.5), max:0.5, label: costoKm.toFixed(2), sublabel:'€ / km', size:104, colorOverride:'var(--accent)'})}
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:22px;height:22px;border-radius:7px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">€</div>
+          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Costo / km</span>
+        </div>
+        ${gaugeSVG({value: Math.min(costoKm,0.5), max:0.5, label: costoKm.toFixed(2), sublabel:'euro al km', size:104, colorOverride:'var(--accent)'})}
       </div>
       <div class="gauge-mini">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:22px;height:22px;border-radius:7px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
+          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
+        </div>
         ${gaugeSVG({value: prossimaScadenzaData ? Math.max(0,30-daysBetween(todayISO(),prossimaScadenzaData.data)) : 0, max:30, label: prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—', sublabel: prossimaScadenzaData ? tipoScadenzaLabel(prossimaScadenzaData.tipo)+' (gg)' : 'Nessuna scadenza', size:104})}
       </div>
     </div>
 
     <div class="section-title">Eventi recenti</div>
     ${eventi.length ? `<div class="card">${eventi.map(e=>`
-      <button class="log-item" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
+      <button class="log-item" style="width:calc(100% + 16px);background:none;border:none;text-align:left;cursor:pointer;border-left:3px solid ${e._type==='problemi'?'var(--danger)':'var(--accent)'};padding-left:11px;margin-left:-16px;padding-right:0;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
         <div class="log-dot" style="background:${e._type==='problemi'?'var(--danger-dim)':'var(--accent-dim)'};color:${e._type==='problemi'?'var(--danger)':'var(--accent)'};">${e._type==='problemi'?ICONS.alert:ICONS.wrench}</div>
         <div class="log-body">
           <div class="log-title">${escapeHTML(e.label)}</div>
