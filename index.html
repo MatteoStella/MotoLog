@@ -828,9 +828,13 @@ function manutenzioneFormModal(payload){
       <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||todayISO()}" required></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
       <div class="field"><label>Categoria</label>
-        <select name="categoria">
-          ${['olio','catena','pastiglie','gomme','tagliando','altro'].map(c=>`<option value="${c}" ${m?.categoria===c?'selected':''}>${categoriaLabel(c)}</option>`).join('')}
+        <select name="categoria" data-action="toggleCategoriaCustom">
+          ${['olio','catena','pastiglie','gomme','tagliando','altro'].map(c=>`<option value="${c}" ${m?.categoria===c?'selected':''}>${c==='altro'?'Altro...':categoriaLabel(c)}</option>`).join('')}
         </select>
+      </div>
+      <div class="field" id="categoriaCustomField" style="${m?.categoria==='altro'?'':'display:none;'}">
+        <label>Titolo</label>
+        <input type="text" name="categoriaCustom" value="${escapeHTML(m?.categoriaCustom||'')}" placeholder="es. Sostituzione specchietto">
       </div>
       <div class="field"><label>Descrizione</label><textarea name="descrizione" rows="2">${escapeHTML(m?.descrizione||'')}</textarea></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${m?.costo??''}"></div>
@@ -1269,6 +1273,11 @@ app.addEventListener('change', async (e) => {
   const action = el.dataset.action;
   const id = el.dataset.id;
 
+  if(action==='toggleCategoriaCustom'){
+    const field = document.getElementById('categoriaCustomField');
+    if(field) field.style.display = el.value==='altro' ? '' : 'none';
+    return;
+  }
   if(action==='setKmReminderDays'){
     const val = Math.max(1, Math.min(60, parseInt(el.value)||10));
     await saveSetting('kmReminderDays', val);
@@ -1386,7 +1395,9 @@ app.addEventListener('submit', async (e) => {
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
         data: fd.get('data'), km: parseFloat(fd.get('km')),
-        categoria: fd.get('categoria'), descrizione: fd.get('descrizione'),
+        categoria: fd.get('categoria'),
+        categoriaCustom: fd.get('categoria')==='altro' ? (fd.get('categoriaCustom')||'').trim() || 'Altro' : null,
+        descrizione: fd.get('descrizione'),
         costo: fd.get('costo') ? parseFloat(fd.get('costo')) : null,
         prossimaScadenzaKm: fd.get('prossimaScadenzaKm') ? parseFloat(fd.get('prossimaScadenzaKm')) : null,
         allegati,
