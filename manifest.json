@@ -1,6 +1,6 @@
 {
-  "name": "MotoLog",
-  "short_name": "MotoLog",
+  "name": "MyGarage",
+  "short_name": "MyGarage",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

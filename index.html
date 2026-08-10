@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MotoLog</title>
+<title>MyGarage</title>
 <meta name="theme-color" content="#121214">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -162,7 +162,14 @@
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">
+  <div style="position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;">
+      <svg viewBox="0 0 24 24" style="width:34px;height:34px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.1L4 16.5V20h3.5l5.1-5.1a4 4 0 0 0 5.1-5.6l-2.8 2.8-2-2 2.8-2.8z"/></svg>
+    </div>
+    <div style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:.01em;color:var(--text);">MyGarage</div>
+  </div>
+</div>
 
 <script type="module">
 /* =========================================================
@@ -819,7 +826,7 @@ function viewImpostazioni(){
 
     <div class="section-title">App</div>
     <div class="card muted" style="font-size:12.5px;line-height:1.5;">
-      MotoLog v1 — i dati restano sul dispositivo, nessun account richiesto. Le funzioni AI usano la tua chiave Gemini personale e richiedono connessione internet.
+      MyGarage v1 — i dati restano sul dispositivo, nessun account richiesto. Le funzioni AI usano la tua chiave Gemini personale e richiedono connessione internet.
     </div>
   </div>`;
 }
@@ -1532,9 +1539,9 @@ function headerHTML(){
       <div style="width:38px;"></div>
     </div>`;
   }
-  const titles = {dashboard:'MotoLog', veicoli:'I tuoi veicoli', log:'Diario', ai:'Assistente AI', impostazioni:'Impostazioni'};
+  const titles = {dashboard:'MyGarage', veicoli:'I tuoi veicoli', log:'Diario', ai:'Assistente AI', impostazioni:'Impostazioni'};
   return `<div class="topbar">
-    <h1>${titles[state.tab]||'MotoLog'}</h1>
+    <h1>${titles[state.tab]||'MyGarage'}</h1>
   </div>`;
 }
 
@@ -1605,7 +1612,7 @@ function setupServiceWorker(){
       setTimeout(()=>Notification.requestPermission().catch(()=>{}), 1500);
     }
   } catch(e){
-    console.error('Errore avvio MotoLog:', e);
+    console.error('Errore avvio MyGarage:', e);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text);">
       <h2 style="margin-bottom:10px;">Errore di avvio</h2>
       <p class="muted" style="font-size:14px;">${escapeHTML(e.message || String(e))}</p>
