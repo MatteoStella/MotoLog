@@ -1242,6 +1242,34 @@ async function importaJSON(file){
 /* ---------------- EVENT HANDLING (delegation) ---------------- */
 const app = document.getElementById('app');
 
+/* ---------------- SWIPE TRA TAB ---------------- */
+const TAB_ORDER = ['dashboard','veicoli','log','ai','impostazioni'];
+let touchStartX = 0, touchStartY = 0, touchActive = false;
+
+app.addEventListener('touchstart', (e) => {
+  touchActive = false;
+  if(state.modal || state.lightbox) return;
+  if(state.tab === 'veicoli-detail') return;
+  if(e.target.closest('.veh-switcher, .chip-row')) return; // non rubare lo scroll orizzontale locale
+  if(e.touches.length !== 1) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchActive = true;
+}, {passive:true});
+
+app.addEventListener('touchend', (e) => {
+  if(!touchActive) return;
+  touchActive = false;
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return; // gesto troppo corto o troppo verticale
+  const idx = TAB_ORDER.indexOf(state.tab);
+  if(idx === -1) return;
+  if(dx < 0 && idx < TAB_ORDER.length - 1){ state.tab = TAB_ORDER[idx + 1]; render(); }
+  else if(dx > 0 && idx > 0){ state.tab = TAB_ORDER[idx - 1]; render(); }
+}, {passive:true});
+
 app.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]');
   if(!el) return;
