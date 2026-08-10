@@ -150,6 +150,10 @@
 
   .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes slideInFwd{from{opacity:0;transform:translateX(28px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes slideInBack{from{opacity:0;transform:translateX(-28px);}to{opacity:1;transform:translateX(0);}}
+  .content-enter-fwd{animation:slideInFwd .3s cubic-bezier(.25,.8,.35,1);}
+  .content-enter-back{animation:slideInBack .3s cubic-bezier(.25,.8,.35,1);}
 
   .sub-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
   .sub-tab{flex:1;background:none;border:none;padding:9px;border-radius:9px;font-size:13px;color:var(--text-muted);font-weight:500;}
@@ -1627,6 +1631,8 @@ app.addEventListener('change', async (e) => {
   if(e.target.id==='importInput' && e.target.files[0]){ await importaJSON(e.target.files[0]); }
 });
 
+let lastRenderedTab = null;
+
 function render(){
   let body = '';
   if(state.tab==='dashboard') body = viewDashboard();
@@ -1636,10 +1642,20 @@ function render(){
   else if(state.tab==='ai') body = viewAI();
   else if(state.tab==='impostazioni') body = viewImpostazioni();
 
+  let animClass = '';
+  if(lastRenderedTab !== null && state.tab !== lastRenderedTab){
+    const oldIdx = TAB_ORDER.indexOf(lastRenderedTab);
+    const newIdx = TAB_ORDER.indexOf(state.tab);
+    if(oldIdx !== -1 && newIdx !== -1){
+      animClass = newIdx > oldIdx ? 'content-enter-fwd' : 'content-enter-back';
+    }
+  }
+  lastRenderedTab = state.tab;
+
   app.innerHTML = `
     ${headerHTML()}
     ${vehicleSwitcherHTML()}
-    ${body}
+    <div class="${animClass}">${body}</div>
     ${tabBarHTML()}
     ${fabHTML()}
     ${state.modal ? modalContent() : ''}
