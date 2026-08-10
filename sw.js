@@ -1,4 +1,4 @@
-const CACHE = 'motolog-v1';
+const CACHE = 'motolog-v2';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -13,11 +13,12 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Network-first per restare aggiornati, fallback alla cache se offline.
+// Network-first per restare aggiornati: cache:'no-store' forza il bypass
+// della cache HTTP del browser, non solo della Cache Storage del SW.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-store' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
@@ -29,7 +30,7 @@ self.addEventListener('fetch', (e) => {
 
 self.addEventListener('periodicsync', (e) => {
   if (e.tag === 'km-reminder') {
-    e.waitUntil(self.registration.showNotification('MotoLog', {
+    e.waitUntil(self.registration.showNotification('MyGarage', {
       body: 'Ricordati di aggiornare i km dei tuoi mezzi',
       icon: './icon-192.png'
     }));
