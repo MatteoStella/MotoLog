@@ -461,8 +461,18 @@ function viewDashboard(){
   const kmRimanenti = nextManut ? Math.max(0, nextManut.prossimaScadenzaKm - kmStimati) : null;
   const maxRange = nextManut ? Math.max(1, nextManut.prossimaScadenzaKm - (nextManut.km||0)) : 1;
 
-  const costoTotale = state.cache.manutenzioni.reduce((s,m)=> s + (m.costo||0), 0);
-  const costoKm = v.kmAttuali > 0 ? (costoTotale / v.kmAttuali) : 0;
+  const rifornimenti = [...state.cache.rifornimenti].sort((a,b)=> a.km-b.km);
+  let consumoKmL = null;
+  if(rifornimenti.length >= 2){
+    const kmTotali = rifornimenti[rifornimenti.length-1].km - rifornimenti[0].km;
+    const litriConsumati = rifornimenti.slice(1).reduce((s,r)=> s+(r.litri||0), 0);
+    if(kmTotali > 0 && litriConsumati > 0) consumoKmL = kmTotali / litriConsumati;
+  }
+
+  const oggiMeno365 = new Date(); oggiMeno365.setDate(oggiMeno365.getDate()-365);
+  const spesa12Mesi = [...state.cache.manutenzioni, ...state.cache.rifornimenti]
+    .filter(x => new Date(x.data) >= oggiMeno365)
+    .reduce((s,x)=> s+(x.costo||0), 0);
 
   const prossimaScadenzaData = state.cache.scadenze.find(s=>s.stato==='attiva');
 
@@ -485,10 +495,10 @@ function viewDashboard(){
     <div class="gauge-mini-row">
       <div class="gauge-mini">
         <div style="display:flex;align-items:center;gap:6px;">
-          <div style="width:22px;height:22px;border-radius:7px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">€</div>
-          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Costo / km</span>
+          <div style="width:22px;height:22px;border-radius:7px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
+          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Consumo</span>
         </div>
-        ${gaugeSVG({value: Math.min(costoKm,0.5), max:0.5, label: costoKm.toFixed(2), sublabel:'euro al km', size:104, colorOverride:'var(--accent)'})}
+        ${consumoKmL ? gaugeSVG({value: Math.min(consumoKmL,30), max:30, label: consumoKmL.toFixed(1), sublabel:'km al litro', size:104, colorOverride:'var(--accent)'}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Servono almeno 2 rifornimenti', size:104, colorOverride:'var(--text-muted)'})}
       </div>
       <div class="gauge-mini">
         <div style="display:flex;align-items:center;gap:6px;">
@@ -497,6 +507,13 @@ function viewDashboard(){
         </div>
         ${gaugeSVG({value: prossimaScadenzaData ? Math.max(0,30-daysBetween(todayISO(),prossimaScadenzaData.data)) : 0, max:30, label: prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—', sublabel: prossimaScadenzaData ? tipoScadenzaLabel(prossimaScadenzaData.tipo)+' (gg)' : 'Nessuna scadenza', size:104})}
       </div>
+    </div>
+    <div class="card" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Spesa ultimi 12 mesi</div>
+        <div class="mono" style="font-size:20px;font-weight:700;margin-top:4px;">${fmtEuro(spesa12Mesi)}</div>
+      </div>
+      <div style="width:34px;height:34px;border-radius:9px;background:var(--ok-dim);color:var(--ok);display:flex;align-items:center;justify-content:center;font-weight:700;">€</div>
     </div>
 
     <div class="section-title">Eventi recenti</div>
