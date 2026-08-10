@@ -249,6 +249,7 @@ const ICONS = {
   back: `<svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`,
   close: `<svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
   edit: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  star: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 2.5l3 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3l-6.3 3.5 1.6-6.8L2.1 9.4l6.9-.6z"/></svg>`,
   camera: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>`,
   upload: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>`,
   trash: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>`,
@@ -330,7 +331,10 @@ function showToast(text){ state.toast = text; render(); setTimeout(()=>{ state.t
 async function loadVeicoli(){
   state.veicoli = await dbGetAll('veicoli');
   state.veicoli.sort((a,b)=>a.marca.localeCompare(b.marca));
-  if(!state.selectedVeicoloId && state.veicoli.length) state.selectedVeicoloId = state.veicoli[0].id;
+  if(!state.selectedVeicoloId && state.veicoli.length){
+    const preferito = state.veicoli.find(v=>v.preferito);
+    state.selectedVeicoloId = (preferito || state.veicoli[0]).id;
+  }
   if(state.selectedVeicoloId && !state.veicoli.find(v=>v.id===state.selectedVeicoloId)){
     state.selectedVeicoloId = state.veicoli[0]?.id || null;
   }
@@ -549,7 +553,10 @@ function viewVeicoli(){
           <div style="display:flex;align-items:center;gap:12px;">
             <div class="log-dot" style="background:var(--accent-dim);color:var(--accent);width:42px;height:42px;">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
             <div>
-              <div style="font-weight:600;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
+              <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
+                ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}
+                ${v.preferito ? `<span style="color:var(--warn);display:inline-flex;">${(() => { const s = ICONS.star; return s.replace('class="icon"','class="icon" fill="currentColor" style="width:14px;height:14px;"'); })()}</span>` : ''}
+              </div>
               <div class="muted mono" style="font-size:13px;">${fmtKm(v.kmAttuali)} · ${v.anno}</div>
             </div>
           </div>
@@ -564,7 +571,10 @@ function viewVeicoloDetail(v){
     <div class="card">
       <div class="card-row" style="margin-bottom:14px;">
         <h2>${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</h2>
-        <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}">${ICONS.wrench}</button>
+        <div style="display:flex;gap:8px;">
+          <button class="icon-btn" data-action="setPreferito" data-id="${v.id}" style="${v.preferito?'color:var(--warn);':''}" title="Veicolo principale">${(() => { const s = ICONS.star; return v.preferito ? s.replace('class="icon"','class="icon" fill="currentColor"') : s; })()}</button>
+          <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}">${ICONS.wrench}</button>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px;">
         <div><div class="muted" style="font-size:12px;">Tipo</div>${v.tipo==='moto'?'Moto':'Auto'}</div>
@@ -1292,6 +1302,21 @@ app.addEventListener('click', async (e) => {
   if(action==='analizzaManuale'){ await actionAnalizzaManuale(); return; }
   if(action==='sendChat'){ await actionSendChat(); return; }
 
+  if(action==='setPreferito'){
+    const target = state.veicoli.find(x=>x.id===id);
+    const newValue = !target.preferito;
+    for(const veic of state.veicoli){
+      const shouldBe = newValue && veic.id===id;
+      if(!!veic.preferito !== shouldBe){
+        veic.preferito = shouldBe;
+        await dbPut('veicoli', veic);
+      }
+    }
+    await loadVeicoli();
+    showToast(newValue ? "Impostato come veicolo principale" : "Rimosso come veicolo principale");
+    render();
+    return;
+  }
   if(action==='deleteVeicolo'){
     if(confirm("Eliminare questo veicolo e tutti i suoi dati?")){
       await dbDelete('veicoli', id);
