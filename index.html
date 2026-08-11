@@ -1238,8 +1238,12 @@ async function esportaReportPDF(veicoloId){
 
     function newPage(){ page = doc.addPage([PAGE_W, PAGE_H]); y = PAGE_H - MARGIN; }
     function ensure(space){ if(y - space < MARGIN) newPage(); }
+    // Rimuove a capo interni (le textarea dell'app permettono testo multi-riga,
+    // ma drawText di pdf-lib li andrebbe a capo da solo senza avanzare "y",
+    // sovrapponendo la riga successiva della tabella).
+    function flat(s){ return String(s||'').replace(/[\r\n]+/g, ' / ').trim(); }
     function text(t, {x=MARGIN, size=10, font=fontRegular, color=rgb(0.09,0.09,0.1)}={}){
-      page.drawText(String(t), {x, y, size, font, color});
+      page.drawText(flat(t), {x, y, size, font, color});
     }
     function lineBreak(gap=16){ y -= gap; }
     function hr(){ page.drawLine({start:{x:MARGIN,y}, end:{x:PAGE_W-MARGIN,y}, thickness:0.5, color:rgb(0.8,0.8,0.8)}); }
@@ -1276,27 +1280,13 @@ async function esportaReportPDF(veicoloId){
       text(fmtDate(m.data), {x:cols[0].x, size:9});
       text(fmtKm(m.km).replace(' km',''), {x:cols[1].x, size:9});
       text(categoriaLabel(m.categoria, m.categoriaCustom).slice(0,16), {x:cols[2].x, size:9});
-      text((m.descrizione||'-').slice(0,45), {x:cols[3].x, size:9});
+      text(flat(m.descrizione||'-').slice(0,45), {x:cols[3].x, size:9});
       text(m.costo?fmtEuroPDF(m.costo):'-', {x:cols[4].x, size:9});
       lineBreak(17);
     }
     lineBreak(6); hr(); lineBreak(20);
     text(`Spesa totale manutenzioni: ${fmtEuroPDF(costoTotaleManut)}`, {size:11, font:fontBold});
     lineBreak(30);
-
-    const rifornimenti = [...state.cache.rifornimenti].sort((a,b)=> new Date(b.data)-new Date(a.data));
-    ensure(60);
-    text("Rifornimenti", {size:13, font:fontBold});
-    lineBreak(20);
-    if(rifornimenti.length===0){
-      text("Nessun rifornimento registrato.", {size:10, color:rgb(0.5,0.5,0.52)});
-      lineBreak(16);
-    } else {
-      const totLitri = rifornimenti.reduce((s,r)=>s+(r.litri||0),0);
-      const totCosto = rifornimenti.reduce((s,r)=>s+(r.costo||0),0);
-      text(`${rifornimenti.length} rifornimenti registrati - ${totLitri.toFixed(1)} L totali - ${fmtEuroPDF(totCosto)}`, {size:10});
-      lineBreak(20);
-    }
 
     const problemi = [...state.cache.problemi].sort((a,b)=> new Date(b.data)-new Date(a.data));
     ensure(40);
@@ -1307,9 +1297,9 @@ async function esportaReportPDF(veicoloId){
     } else {
       for(const p of problemi){
         ensure(28);
-        text(`${fmtDate(p.data)} - [${p.stato==='risolto'?'Risolto':'Aperto'}] ${p.sintomi.slice(0,70)}`, {size:9, font:fontBold});
+        text(`${fmtDate(p.data)} - [${p.stato==='risolto'?'Risolto':'Aperto'}] ${flat(p.sintomi).slice(0,70)}`, {size:9, font:fontBold});
         lineBreak(13);
-        if(p.soluzione){ text(`  Soluzione: ${p.soluzione.slice(0,80)}`, {size:9, color:rgb(0.4,0.4,0.42)}); lineBreak(13); }
+        if(p.soluzione){ text(`  Soluzione: ${flat(p.soluzione).slice(0,80)}`, {size:9, color:rgb(0.4,0.4,0.42)}); lineBreak(13); }
         lineBreak(6);
       }
     }
