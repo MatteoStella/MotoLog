@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
   :root{
     --bg:#121214;
@@ -146,7 +147,9 @@
   .msg-ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
   .chat-input-row{position:sticky;bottom:0;display:flex;gap:8px;background:var(--bg);padding:10px 0 4px;}
 
-  .toast{position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:999px;font-size:13px;z-index:30;}
+  .toast{position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:9px 18px 9px 10px;border-radius:999px;font-size:13px;z-index:30;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+  .check-badge{width:20px;height:20px;border-radius:50%;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:popIn .35s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes popIn{0%{transform:scale(0);}70%{transform:scale(1.15);}100%{transform:scale(1);}}
 
   .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -194,7 +197,7 @@
 /* ---------------- CONFIG ---------------- */
 const GEMINI_MODEL = "gemini-flash-latest"; // alias ufficiale, punta sempre all'ultima versione stabile
 function geminiURL(){ return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`; }
-const DEFAULT_SETTINGS = { kmReminderDays: 10, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
+const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
   dark:  { bg:'#121214', 'bg-rgb':'18,18,20', 'bg-2':'#18181B', surface:'#1C1C21', 'surface-2':'#232328', border:'#313136', text:'#EDEDEF', 'text-muted':'#8B8B93', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
@@ -219,6 +222,7 @@ function applyTheme(){
 /* ---------------- UTILS ---------------- */
 const uid = () => crypto.randomUUID();
 const todayISO = () => new Date().toISOString().slice(0,10);
+const addMonths = (dateStr, months) => { const d = new Date(dateStr); d.setMonth(d.getMonth()+months); return d.toISOString().slice(0,10); };
 const fmtDate = (iso) => { if(!iso) return "—"; const d=new Date(iso); return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}); };
 const fmtKm = (n) => n==null ? "—" : Math.round(n).toLocaleString('it-IT') + " km";
 const fmtEuro = (n) => n==null ? "—" : n.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
@@ -330,7 +334,8 @@ async function saveSetting(key, value){
   await dbPut('settings', { key, value });
 }
 
-function showToast(text){ state.toast = text; render(); setTimeout(()=>{ state.toast=null; render(); }, 3200); }
+function showToast(text){ state.toast = {text, success:false}; render(); setTimeout(()=>{ state.toast=null; render(); }, 3200); }
+function showSuccessToast(text){ state.toast = {text, success:true}; render(); setTimeout(()=>{ state.toast=null; render(); }, 2400); }
 
 async function loadVeicoli(){
   state.veicoli = await dbGetAll('veicoli');
@@ -437,6 +442,33 @@ function bannerHTML(veicolo){
   </div>`;
 }
 
+function scadenzeInScadenza(veicolo){
+  return state.cache.scadenze.filter(s => s.stato==='attiva' && daysBetween(todayISO(), s.data) <= state.settings.scadenzaReminderDays);
+}
+function scadenzaBannerHTML(veicolo){
+  const key = 'scad_' + veicolo.id + '_' + todayISO();
+  if(state.bannerDismissed[key]) return '';
+  const due = scadenzeInScadenza(veicolo);
+  if(!due.length) return '';
+  due.sort((a,b)=> new Date(a.data)-new Date(b.data));
+  const first = due[0];
+  const gg = daysBetween(todayISO(), first.data);
+  const quando = gg < 0 ? `scaduta da ${Math.abs(gg)} giorni` : gg===0 ? 'scade oggi' : `tra ${gg} giorni`;
+  const testo = due.length===1
+    ? `<b>${tipoScadenzaLabel(first.tipo)}</b> ${quando}.`
+    : `${due.length} scadenze da controllare, la più urgente: <b>${tipoScadenzaLabel(first.tipo)}</b> ${quando}.`;
+  return `
+  <div class="banner" style="background:var(--danger-dim);border-color:rgba(228,72,60,.35);">
+    <div class="banner-icon" style="color:var(--danger);">${ICONS.calendar}</div>
+    <div class="banner-text">${testo}
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="setTab" data-id="log">Vedi nel Diario</button>
+      </div>
+    </div>
+    <button class="banner-close" data-action="dismissScadenzaBanner" data-id="${veicolo.id}">${ICONS.close}</button>
+  </div>`;
+}
+
 function tabBarHTML(){
   const tabs = [
     {id:'dashboard', icon:ICONS.dashboard, label:'Dashboard'},
@@ -492,6 +524,7 @@ function viewDashboard(){
   return `
   <div class="content">
     ${bannerHTML(v)}
+    ${scadenzaBannerHTML(v)}
     <div class="card gauge-hero">
       <div class="muted" style="align-self:flex-start;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Prossima scadenza</div>
       ${nextManut ? gaugeSVG({value:kmRimanenti, max:maxRange, label: fmtKm(kmRimanenti).replace(' km',''), sublabel:`km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"`}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Nessuna scadenza km impostata', colorOverride:'var(--text-muted)'})}
@@ -608,7 +641,10 @@ function viewVeicoloDetail(v){
       <div><div class="mono" style="font-size:18px;font-weight:600;">${state.cache.problemi.filter(p=>p.stato==='aperto').length}</div><div class="muted" style="font-size:12px;">Problemi aperti</div></div>
     </div>
 
-    <button class="btn btn-danger btn-block" style="margin-top:20px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:20px;" data-action="exportReportPDF" data-id="${v.id}" ${state.busy?'disabled':''}>
+      ${state.busy ? '<div class="spinner"></div> Generazione...' : ICONS.file + ' Esporta report PDF'}
+    </button>
+    <button class="btn btn-danger btn-block" style="margin-top:10px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
   </div>`;
 }
 
@@ -820,6 +856,10 @@ function viewImpostazioni(){
         <label>Sollecita aggiornamento km dopo (giorni)</label>
         <input type="number" min="1" max="60" value="${state.settings.kmReminderDays}" data-action="setKmReminderDays">
       </div>
+      <div class="field">
+        <label>Segnala scadenze in arrivo entro (giorni)</label>
+        <input type="number" min="1" max="90" value="${state.settings.scadenzaReminderDays}" data-action="setScadenzaReminderDays">
+      </div>
       <div class="card-row" style="margin-top:16px;">
         <div>
           <div style="font-size:14px;">Notifiche</div>
@@ -945,6 +985,7 @@ function scadenzaFormModal(payload){
   const s = payload?.id ? state.cache.scadenze.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
     <div class="modal-header"><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    ${s?.stato==='completata' ? `<div class="badge badge-ok" style="margin-bottom:14px;display:inline-block;">✓ Completata</div>` : ''}
     ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;">${ICONS.camera} Scansiona documento (AI)<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
     <form id="entryForm">
       <div class="field"><label>Tipo</label>
@@ -960,6 +1001,7 @@ function scadenzaFormModal(payload){
           <option value="biennale" ${s?.ricorrenza==='biennale'?'selected':''}>Biennale</option>
         </select>
       </div>
+      ${s && s.stato!=='completata' ? `<button type="button" class="btn btn-ghost btn-block" style="margin-top:14px;" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
         ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveScadenza" data-id="${s?.id||''}">Salva</button>
@@ -1177,6 +1219,116 @@ async function actionScansionaScadenza(file){
   }
 }
 
+/* ---------------- REPORT PDF ---------------- */
+function fmtEuroPDF(n){ return n==null ? "-" : n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) + " EUR"; }
+
+async function esportaReportPDF(veicoloId){
+  const v = state.veicoli.find(x=>x.id===veicoloId);
+  if(!v) return;
+  state.busy = true; render();
+  try{
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const doc = await PDFDocument.create();
+    const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    const MARGIN = 50, PAGE_W = 595, PAGE_H = 842;
+    let page = doc.addPage([PAGE_W, PAGE_H]);
+    let y = PAGE_H - MARGIN;
+
+    function newPage(){ page = doc.addPage([PAGE_W, PAGE_H]); y = PAGE_H - MARGIN; }
+    function ensure(space){ if(y - space < MARGIN) newPage(); }
+    function text(t, {x=MARGIN, size=10, font=fontRegular, color=rgb(0.09,0.09,0.1)}={}){
+      page.drawText(String(t), {x, y, size, font, color});
+    }
+    function lineBreak(gap=16){ y -= gap; }
+    function hr(){ page.drawLine({start:{x:MARGIN,y}, end:{x:PAGE_W-MARGIN,y}, thickness:0.5, color:rgb(0.8,0.8,0.8)}); }
+
+    text("MyGarage", {size:11, font:fontBold, color:rgb(0.18,0.5,1)});
+    lineBreak(22);
+    text(`Report manutenzioni - ${v.marca} ${v.modello}`, {size:18, font:fontBold});
+    lineBreak(26);
+    text(`Anno ${v.anno}${v.targa?' - Targa '+v.targa:''} - Km attuali: ${Math.round(v.kmAttuali).toLocaleString('it-IT')}`, {size:10, color:rgb(0.4,0.4,0.42)});
+    lineBreak(14);
+    text(`Generato il ${fmtDate(todayISO())}`, {size:9, color:rgb(0.55,0.55,0.57)});
+    lineBreak(20);
+    hr();
+    lineBreak(26);
+
+    const manutenzioni = [...state.cache.manutenzioni].sort((a,b)=> new Date(b.data)-new Date(a.data));
+    text("Manutenzioni", {size:13, font:fontBold});
+    lineBreak(20);
+    const cols = [ {x:MARGIN,label:'Data'}, {x:MARGIN+65,label:'Km'}, {x:MARGIN+125,label:'Categoria'}, {x:MARGIN+210,label:'Descrizione'}, {x:PAGE_W-MARGIN-60,label:'Costo'} ];
+    function tableHeader(){
+      ensure(24);
+      cols.forEach(c => text(c.label, {x:c.x, size:9, font:fontBold, color:rgb(0.4,0.4,0.42)}));
+      lineBreak(6); hr(); lineBreak(16);
+    }
+    tableHeader();
+    let costoTotaleManut = 0;
+    if(manutenzioni.length===0){
+      text("Nessuna manutenzione registrata.", {size:10, color:rgb(0.5,0.5,0.52)});
+      lineBreak(16);
+    }
+    for(const m of manutenzioni){
+      ensure(18);
+      costoTotaleManut += (m.costo||0);
+      text(fmtDate(m.data), {x:cols[0].x, size:9});
+      text(fmtKm(m.km).replace(' km',''), {x:cols[1].x, size:9});
+      text(categoriaLabel(m.categoria, m.categoriaCustom).slice(0,16), {x:cols[2].x, size:9});
+      text((m.descrizione||'-').slice(0,45), {x:cols[3].x, size:9});
+      text(m.costo?fmtEuroPDF(m.costo):'-', {x:cols[4].x, size:9});
+      lineBreak(17);
+    }
+    lineBreak(6); hr(); lineBreak(20);
+    text(`Spesa totale manutenzioni: ${fmtEuroPDF(costoTotaleManut)}`, {size:11, font:fontBold});
+    lineBreak(30);
+
+    const rifornimenti = [...state.cache.rifornimenti].sort((a,b)=> new Date(b.data)-new Date(a.data));
+    ensure(60);
+    text("Rifornimenti", {size:13, font:fontBold});
+    lineBreak(20);
+    if(rifornimenti.length===0){
+      text("Nessun rifornimento registrato.", {size:10, color:rgb(0.5,0.5,0.52)});
+      lineBreak(16);
+    } else {
+      const totLitri = rifornimenti.reduce((s,r)=>s+(r.litri||0),0);
+      const totCosto = rifornimenti.reduce((s,r)=>s+(r.costo||0),0);
+      text(`${rifornimenti.length} rifornimenti registrati - ${totLitri.toFixed(1)} L totali - ${fmtEuroPDF(totCosto)}`, {size:10});
+      lineBreak(20);
+    }
+
+    const problemi = [...state.cache.problemi].sort((a,b)=> new Date(b.data)-new Date(a.data));
+    ensure(40);
+    text("Storico problemi", {size:13, font:fontBold});
+    lineBreak(20);
+    if(problemi.length===0){
+      text("Nessun problema registrato.", {size:10, color:rgb(0.5,0.5,0.52)});
+    } else {
+      for(const p of problemi){
+        ensure(28);
+        text(`${fmtDate(p.data)} - [${p.stato==='risolto'?'Risolto':'Aperto'}] ${p.sintomi.slice(0,70)}`, {size:9, font:fontBold});
+        lineBreak(13);
+        if(p.soluzione){ text(`  Soluzione: ${p.soluzione.slice(0,80)}`, {size:9, color:rgb(0.4,0.4,0.42)}); lineBreak(13); }
+        lineBreak(6);
+      }
+    }
+
+    const pdfBytes = await doc.save();
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `MyGarage-${v.marca}-${v.modello}-${todayISO()}.pdf`.replace(/\s+/g,'_');
+    a.click();
+    URL.revokeObjectURL(url);
+    showSuccessToast("Report PDF generato");
+  } catch(e){
+    showToast("Errore generazione PDF: " + (e.message||"riprova"));
+  } finally {
+    state.busy = false; render();
+  }
+}
+
 /* ---------------- BACKUP ---------------- */
 async function clearAllData(){
   const db = await getDB();
@@ -1307,6 +1459,7 @@ app.addEventListener('click', async (e) => {
   if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
   if(action==='dismissBanner'){ state.bannerDismissed[id+todayISO()]=true; render(); return; }
+  if(action==='dismissScadenzaBanner'){ state.bannerDismissed['scad_'+id+'_'+todayISO()]=true; render(); return; }
   if(action==='selectTipo'){
     const hidden = document.getElementById('tipoHiddenInput');
     if(hidden) hidden.value = el.dataset.value;
@@ -1364,6 +1517,31 @@ app.addEventListener('click', async (e) => {
       await loadVeicoloData(state.selectedVeicoloId);
       state.modal=null; render();
     }
+    return;
+  }
+  if(action==='exportReportPDF'){
+    await esportaReportPDF(id);
+    return;
+  }
+  if(action==='completaScadenza'){
+    const s = state.cache.scadenze.find(x=>x.id===id);
+    if(!s) return;
+    s.stato = 'completata';
+    await dbPut('scadenze', s);
+    let rinnovata = false;
+    if(s.ricorrenza && s.ricorrenza!=='nessuna'){
+      const mesi = s.ricorrenza==='annuale' ? 12 : s.ricorrenza==='biennale' ? 24 : (s.ricorrenzaMesi||12);
+      await dbPut('scadenze', {
+        id: uid(), veicoloId: s.veicoloId, tipo: s.tipo, data: addMonths(s.data, mesi),
+        ricorrenza: s.ricorrenza, ricorrenzaMesi: s.ricorrenzaMesi||null,
+        origine: 'rinnovo-auto', stato: 'attiva'
+      });
+      rinnovata = true;
+    }
+    state.modal = null;
+    await loadVeicoloData(state.selectedVeicoloId);
+    showSuccessToast(rinnovata ? "Completata e rinnovata" : "Scadenza completata");
+    render();
     return;
   }
   if(action==='deleteManuale'){
@@ -1430,6 +1608,11 @@ app.addEventListener('change', async (e) => {
   if(action==='setKmReminderDays'){
     const val = Math.max(1, Math.min(60, parseInt(el.value)||10));
     await saveSetting('kmReminderDays', val);
+    return;
+  }
+  if(action==='setScadenzaReminderDays'){
+    const val = Math.max(1, Math.min(90, parseInt(el.value)||14));
+    await saveSetting('scadenzaReminderDays', val);
     return;
   }
   if(action==='addAttachments'){
@@ -1502,6 +1685,7 @@ app.addEventListener('submit', async (e) => {
     await loadVeicoli();
     state.selectedVeicoloId = obj.id;
     await loadVeicoloData(obj.id);
+    showSuccessToast("Veicolo salvato");
     render();
     return;
   }
@@ -1516,7 +1700,7 @@ app.addEventListener('submit', async (e) => {
     state.modal=null;
     await loadVeicoli();
     await loadVeicoloData(state.selectedVeicoloId);
-    showToast("Km aggiornati");
+    showSuccessToast("Km aggiornati");
     render();
     return;
   }
@@ -1554,13 +1738,18 @@ app.addEventListener('submit', async (e) => {
       await dbPut('manutenzioni', obj);
       state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(err){} });
       state.editAttachments = [];
+      showSuccessToast("Manutenzione salvata");
     } else if(modalView==='scadenze'){
+      const existing = existingId ? state.cache.scadenze.find(s=>s.id===existingId) : null;
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
         tipo: fd.get('tipo'), data: fd.get('data'), ricorrenza: fd.get('ricorrenza'),
-        origine:'manuale', stato:'attiva',
+        ricorrenzaMesi: existing?.ricorrenzaMesi ?? null,
+        origine: existing?.origine || 'manuale',
+        stato: existing?.stato || 'attiva',
       };
       await dbPut('scadenze', obj);
+      showSuccessToast("Scadenza salvata");
     } else if(modalView==='problemi'){
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
@@ -1568,6 +1757,7 @@ app.addEventListener('submit', async (e) => {
         soluzione: fd.get('soluzione'), stato: fd.get('stato'),
       };
       await dbPut('problemi', obj);
+      showSuccessToast("Problema salvato");
     } else if(modalView==='rifornimenti'){
       const obj = {
         id: existingId || uid(), veicoloId: v.id,
@@ -1575,6 +1765,7 @@ app.addEventListener('submit', async (e) => {
         litri: parseFloat(fd.get('litri')), costo: parseFloat(fd.get('costo')),
       };
       await dbPut('rifornimenti', obj);
+      showSuccessToast("Rifornimento salvato");
     }
     state.modal=null;
     await loadVeicoloData(v.id);
@@ -1659,7 +1850,7 @@ function render(){
     ${tabBarHTML()}
     ${fabHTML()}
     ${state.modal ? modalContent() : ''}
-    ${state.toast ? `<div class="toast">${escapeHTML(state.toast)}</div>` : ''}
+    ${state.toast ? `<div class="toast">${state.toast.success ? `<span class="check-badge">${ICONS.check}</span>` : ''}${escapeHTML(state.toast.text)}</div>` : ''}
     ${state.lightbox ? `<div class="modal-overlay" style="align-items:center;justify-content:center;" data-action="closeLightboxBg">
       <img src="${state.lightbox.url}" alt="${escapeHTML(state.lightbox.nome||'')}" style="max-width:92%;max-height:82vh;border-radius:8px;object-fit:contain;">
       <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.25);" data-action="closeLightbox">${ICONS.close}</button>
