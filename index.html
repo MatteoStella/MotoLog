@@ -1238,12 +1238,23 @@ async function esportaReportPDF(veicoloId){
 
     function newPage(){ page = doc.addPage([PAGE_W, PAGE_H]); y = PAGE_H - MARGIN; }
     function ensure(space){ if(y - space < MARGIN) newPage(); }
-    // Rimuove a capo interni (le textarea dell'app permettono testo multi-riga,
-    // ma drawText di pdf-lib li andrebbe a capo da solo senza avanzare "y",
-    // sovrapponendo la riga successiva della tabella).
-    function flat(s){ return String(s||'').replace(/[\r\n]+/g, ' / ').trim(); }
-    function text(t, {x=MARGIN, size=10, font=fontRegular, color=rgb(0.09,0.09,0.1)}={}){
-      page.drawText(flat(t), {x, y, size, font, color});
+    function flat(s){ return String(s||'').replace(/[\r\n]+/g, ' ').replace(/\s+/g,' ').trim(); }
+    // Vero a capo: spezza il testo in righe che stanno nella larghezza data,
+    // misurando la larghezza reale col font scelto (nessun taglio di contenuto).
+    function wrap(str, font, size, maxWidth){
+      const words = flat(str).split(' ').filter(Boolean);
+      if(!words.length) return [''];
+      const lines = []; let cur = '';
+      for(const w of words){
+        const test = cur ? cur + ' ' + w : w;
+        if(font.widthOfTextAtSize(test, size) > maxWidth && cur){ lines.push(cur); cur = w; }
+        else cur = test;
+      }
+      if(cur) lines.push(cur);
+      return lines;
+    }
+    function text(t, {x=MARGIN, y:yy=y, size=10, font=fontRegular, color=rgb(0.09,0.09,0.1)}={}){
+      page.drawText(flat(t), {x, y:yy, size, font, color});
     }
     function lineBreak(gap=16){ y -= gap; }
     function hr(){ page.drawLine({start:{x:MARGIN,y}, end:{x:PAGE_W-MARGIN,y}, thickness:0.5, color:rgb(0.8,0.8,0.8)}); }
@@ -1262,7 +1273,7 @@ async function esportaReportPDF(veicoloId){
     const manutenzioni = [...state.cache.manutenzioni].sort((a,b)=> new Date(b.data)-new Date(a.data));
     text("Manutenzioni", {size:13, font:fontBold});
     lineBreak(20);
-    const cols = [ {x:MARGIN,label:'Data'}, {x:MARGIN+65,label:'Km'}, {x:MARGIN+125,label:'Categoria'}, {x:MARGIN+210,label:'Descrizione'}, {x:PAGE_W-MARGIN-60,label:'Costo'} ];
+    const cols = [ {x:MARGIN,label:'Data'}, {x:MARGIN+65,label:'Km'}, {x:MARGIN+125,label:'Categoria',w:80}, {x:MARGIN+210,label:'Descrizione',w:(PAGE_W-MARGIN-60)-(MARGIN+210)-10}, {x:PAGE_W-MARGIN-60,label:'Costo'} ];
     function tableHeader(){
       ensure(24);
       cols.forEach(c => text(c.label, {x:c.x, size:9, font:fontBold, color:rgb(0.4,0.4,0.42)}));
@@ -1274,15 +1285,22 @@ async function esportaReportPDF(veicoloId){
       text("Nessuna manutenzione registrata.", {size:10, color:rgb(0.5,0.5,0.52)});
       lineBreak(16);
     }
+    let rowsSinceHeader = 0;
     for(const m of manutenzioni){
-      ensure(18);
+      const catLines = wrap(categoriaLabel(m.categoria, m.categoriaCustom), fontRegular, 9, cols[2].w);
+      const descLines = wrap(m.descrizione||'-', fontRegular, 9, cols[3].w);
+      const nLines = Math.max(catLines.length, descLines.length, 1);
+      const rowHeight = nLines*12 + 6;
+      if(y - rowHeight < MARGIN){ newPage(); tableHeader(); rowsSinceHeader = 0; }
       costoTotaleManut += (m.costo||0);
-      text(fmtDate(m.data), {x:cols[0].x, size:9});
-      text(fmtKm(m.km).replace(' km',''), {x:cols[1].x, size:9});
-      text(categoriaLabel(m.categoria, m.categoriaCustom).slice(0,16), {x:cols[2].x, size:9});
-      text(flat(m.descrizione||'-').slice(0,45), {x:cols[3].x, size:9});
-      text(m.costo?fmtEuroPDF(m.costo):'-', {x:cols[4].x, size:9});
-      lineBreak(17);
+      const topY = y;
+      text(fmtDate(m.data), {x:cols[0].x, y:topY, size:9});
+      text(fmtKm(m.km).replace(' km',''), {x:cols[1].x, y:topY, size:9});
+      catLines.forEach((line,i)=> text(line, {x:cols[2].x, y:topY-i*12, size:9}));
+      descLines.forEach((line,i)=> text(line, {x:cols[3].x, y:topY-i*12, size:9}));
+      text(m.costo?fmtEuroPDF(m.costo):'-', {x:cols[4].x, y:topY, size:9});
+      y = topY - rowHeight;
+      rowsSinceHeader++;
     }
     lineBreak(6); hr(); lineBreak(20);
     text(`Spesa totale manutenzioni: ${fmtEuroPDF(costoTotaleManut)}`, {size:11, font:fontBold});
@@ -1292,15 +1310,26 @@ async function esportaReportPDF(veicoloId){
     ensure(40);
     text("Storico problemi", {size:13, font:fontBold});
     lineBreak(20);
+    const fullWidth = PAGE_W - 2*MARGIN;
     if(problemi.length===0){
       text("Nessun problema registrato.", {size:10, color:rgb(0.5,0.5,0.52)});
     } else {
       for(const p of problemi){
-        ensure(28);
-        text(`${fmtDate(p.data)} - [${p.stato==='risolto'?'Risolto':'Aperto'}] ${flat(p.sintomi).slice(0,70)}`, {size:9, font:fontBold});
+        ensure(14);
+        text(`${fmtDate(p.data)} - ${p.stato==='risolto'?'Risolto':'Aperto'}`, {size:9, font:fontBold});
         lineBreak(13);
-        if(p.soluzione){ text(`  Soluzione: ${flat(p.soluzione).slice(0,80)}`, {size:9, color:rgb(0.4,0.4,0.42)}); lineBreak(13); }
-        lineBreak(6);
+        for(const line of wrap(p.sintomi, fontRegular, 9, fullWidth)){
+          ensure(12); text(line, {size:9}); lineBreak(12);
+        }
+        if(p.soluzione){
+          ensure(12);
+          text("Soluzione:", {size:9, font:fontBold, color:rgb(0.4,0.4,0.42)});
+          lineBreak(12);
+          for(const line of wrap(p.soluzione, fontRegular, 9, fullWidth-10)){
+            ensure(12); text(line, {x:MARGIN+10, size:9, color:rgb(0.4,0.4,0.42)}); lineBreak(12);
+          }
+        }
+        lineBreak(8);
       }
     }
 
