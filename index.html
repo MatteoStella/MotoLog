@@ -385,21 +385,6 @@ function nextScadenzaKm(veicolo){
   items.sort((a,b)=> a.prossimaScadenzaKm - b.prossimaScadenzaKm);
   return items[0];
 }
-function stimaKmAttuali(veicolo){
-  // Proiezione basata sulla media storica km/giorno da manutenzioni + rifornimenti
-  const points = [...state.cache.manutenzioni, ...state.cache.rifornimenti]
-    .map(x => ({ data: x.data, km: x.km }))
-    .filter(x => x.km != null)
-    .sort((a,b)=> new Date(a.data) - new Date(b.data));
-  points.push({ data: veicolo.dataUltimoAggiornamentoKm, km: veicolo.kmAttuali });
-  if(points.length < 2) return veicolo.kmAttuali;
-  const first = points[0], last = points[points.length-1];
-  const days = daysBetween(first.data, last.data) || 1;
-  const kmPerDay = Math.max(0, (last.km - first.km) / days);
-  const sinceLast = daysBetween(veicolo.dataUltimoAggiornamentoKm, todayISO());
-  if(sinceLast <= 0) return veicolo.kmAttuali;
-  return Math.round(veicolo.kmAttuali + kmPerDay * sinceLast);
-}
 function kmReminderNeeded(veicolo){
   const d = daysBetween(veicolo.dataUltimoAggiornamentoKm, todayISO());
   return d >= state.settings.kmReminderDays && !state.bannerDismissed[veicolo.id + todayISO()];
@@ -497,8 +482,7 @@ function viewDashboard(){
   const v = currentVeicolo();
   if(!v) return '';
   const nextManut = nextScadenzaKm(v);
-  const kmStimati = stimaKmAttuali(v);
-  const kmRimanenti = nextManut ? Math.max(0, nextManut.prossimaScadenzaKm - kmStimati) : null;
+  const kmRimanenti = nextManut ? Math.max(0, nextManut.prossimaScadenzaKm - v.kmAttuali) : null;
   const maxRange = nextManut ? Math.max(1, nextManut.prossimaScadenzaKm - (nextManut.km||0)) : 1;
 
   const rifornimenti = [...state.cache.rifornimenti].sort((a,b)=> a.km-b.km);
