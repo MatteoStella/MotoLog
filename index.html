@@ -1120,7 +1120,7 @@ async function actionSalvaProposte(){
     await dbPut('scadenze', {
       id: uid(), veicoloId: v.id, tipo:'tagliando', data: todayISO(),
       ricorrenza: p.intervalloMesi ? 'custom' : 'nessuna', ricorrenzaMesi: p.intervalloMesi || null,
-      origine:'ai-vision', stato:'attiva', note: p.descrizione, intervalloKmSuggerito: p.intervalloKm || null
+      origine:'ai-vision', stato:'attiva', intervalloKmSuggerito: p.intervalloKm || null
     });
   }
   state.proposte = null;
