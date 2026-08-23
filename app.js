@@ -766,8 +766,14 @@ function manutenzioneFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
-      <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||todayISO()}" required></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||todayISO()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
+      <div class="field" id="syncKmField" style="margin-top:10px;${(m?.data||todayISO())===todayISO()?'':'display:none;'}">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer;">
+          <input type="checkbox" name="syncKm" checked style="width:auto;">
+          <span style="font-size:13px;color:var(--text);">Aggiorna anche i km attuali del veicolo</span>
+        </label>
+      </div>
       <div class="field"><label>Categoria</label>
         <select name="categoria" data-action="toggleCategoriaCustom">
           ${['olio','catena','pastiglie','gomme','tagliando','altro'].map(c=>`<option value="${c}" ${m?.categoria===c?'selected':''}>${c==='altro'?'Altro...':categoriaLabel(c)}</option>`).join('')}
@@ -849,8 +855,14 @@ function rifornimentoFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
-      <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||todayISO()}" required></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||todayISO()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${r?.km??currentVeicolo()?.kmAttuali??0}" required></div>
+      <div class="field" id="syncKmField" style="margin-top:10px;${(r?.data||todayISO())===todayISO()?'':'display:none;'}">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer;">
+          <input type="checkbox" name="syncKm" checked style="width:auto;">
+          <span style="font-size:13px;color:var(--text);">Aggiorna anche i km attuali del veicolo</span>
+        </label>
+      </div>
       <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
       <div class="actions-footer">
@@ -1435,6 +1447,11 @@ app.addEventListener('change', async (e) => {
     if(field) field.style.display = el.value==='altro' ? '' : 'none';
     return;
   }
+  if(action==='toggleSyncKmField'){
+    const field = document.getElementById('syncKmField');
+    if(field) field.style.display = el.value===todayISO() ? '' : 'none';
+    return;
+  }
   if(action==='setKmReminderDays'){
     const val = Math.max(1, Math.min(60, parseInt(el.value)||10));
     await saveSetting('kmReminderDays', val);
@@ -1483,6 +1500,18 @@ app.addEventListener('change', async (e) => {
 app.addEventListener('keydown', (e) => {
   if(e.target.id==='chatInput' && e.key==='Enter'){ e.preventDefault(); actionSendChat(); }
 });
+
+async function syncKmSeRichiesto(v, entryData, entryKm, syncRichiesto){
+  if(!syncRichiesto || entryData !== todayISO()) return;
+  if(entryKm < v.kmAttuali){
+    showToast(`Km non aggiornati: ${Math.round(entryKm).toLocaleString('it-IT')} è inferiore ai km attuali del veicolo (${Math.round(v.kmAttuali).toLocaleString('it-IT')})`);
+    return;
+  }
+  v.kmAttuali = entryKm;
+  v.dataUltimoAggiornamentoKm = todayISO();
+  await dbPut('veicoli', v);
+  await loadVeicoli();
+}
 
 app.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1568,6 +1597,7 @@ app.addEventListener('submit', async (e) => {
       await dbPut('manutenzioni', obj);
       state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(err){} });
       state.editAttachments = [];
+      await syncKmSeRichiesto(v, obj.data, obj.km, !!fd.get('syncKm'));
       showSuccessToast("Manutenzione salvata");
     } else if(modalView==='scadenze'){
       const existing = existingId ? state.cache.scadenze.find(s=>s.id===existingId) : null;
@@ -1595,6 +1625,7 @@ app.addEventListener('submit', async (e) => {
         litri: parseFloat(fd.get('litri')), costo: parseFloat(fd.get('costo')),
       };
       await dbPut('rifornimenti', obj);
+      await syncKmSeRichiesto(v, obj.data, obj.km, !!fd.get('syncKm'));
       showSuccessToast("Rifornimento salvato");
     }
     state.modal=null;
