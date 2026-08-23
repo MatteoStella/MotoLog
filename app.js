@@ -515,7 +515,9 @@ function logItemHTML(it){
     title=it.sintomi; sub=it.stato==='risolto'?'Risolto':'Aperto';
   } else {
     icon=ICONS.gas; iconBg='var(--ok-dim)'; iconColor='var(--ok)';
-    title=`${it.litri} L`; sub=`${fmtEuro(it.costo)} · ${fmtKm(it.km)}`;
+    const prezzoLitro = it.litri > 0 ? (it.costo/it.litri) : null;
+    title=`${it.litri} L`;
+    sub=`${fmtEuro(it.costo)}${prezzoLitro?' · '+prezzoLitro.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €/L':''} · ${fmtKm(it.km)}`;
   }
   return `<button class="log-item" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;" data-action="openEdit" data-type="${it._type}" data-id="${it.id}">
     <div class="log-dot" style="background:${iconBg};color:${iconColor};">${icon}</div>
@@ -865,6 +867,7 @@ function rifornimentoFormModal(payload){
       </div>
       <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
+      ${r && r.litri>0 ? `<div class="muted mono" style="font-size:12.5px;margin-top:-8px;">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
       <div class="actions-footer">
         ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveRifornimento" data-id="${r?.id||''}">Salva</button>
