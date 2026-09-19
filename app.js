@@ -50,6 +50,16 @@ function applyTheme(){
 const uid = () => crypto.randomUUID();
 const todayISO = () => new Date().toISOString().slice(0,10);
 const addMonths = (dateStr, months) => { const d = new Date(dateStr); d.setMonth(d.getMonth()+months); return d.toISOString().slice(0,10); };
+const addDays = (dateStr, days) => { const d = new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
+
+function googleCalendarLink({ title, dateISO, details='', recurDays=null }){
+  const start = dateISO.replace(/-/g,'');
+  const endDate = new Date(dateISO); endDate.setDate(endDate.getDate()+1);
+  const end = endDate.toISOString().slice(0,10).replace(/-/g,'');
+  const params = new URLSearchParams({ action:'TEMPLATE', text:title, dates:`${start}/${end}`, details });
+  if(recurDays) params.set('recur', `RRULE:FREQ=DAILY;INTERVAL=${recurDays}`);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
 const fmtDate = (iso) => { if(!iso) return "—"; const d=new Date(iso); return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}); };
 const fmtKm = (n) => n==null ? "—" : Math.round(n).toLocaleString('it-IT') + " km";
 const fmtEuro = (n) => n==null ? "—" : n.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
@@ -430,6 +440,7 @@ function viewVeicoloDetail(v){
         <div><div class="muted" style="font-size:12px;">Targa</div>${v.targa||'—'}</div>
         <div><div class="muted" style="font-size:12px;">Km attuali</div><span class="mono">${fmtKm(v.kmAttuali)}</span></div>
       </div>
+      <a href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurDays:state.settings.kmReminderDays})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:14px;">${ICONS.calendar} Promemoria km ricorrente su Calendar</a>
     </div>
 
     <div class="section-title">Manuale (per l'AI)</div>
@@ -820,6 +831,7 @@ function scadenzaFormModal(payload){
           <option value="biennale" ${s?.ricorrenza==='biennale'?'selected':''}>Biennale</option>
         </select>
       </div>
+      ${s ? `<a href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage'})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:14px;">${ICONS.calendar} Aggiungi a Google Calendar</a>` : ''}
       ${s && s.stato!=='completata' ? `<button type="button" class="btn btn-ghost btn-block" style="margin-top:14px;" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
         ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
