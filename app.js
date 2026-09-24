@@ -346,25 +346,25 @@ function viewDashboard(){
   <div class="content">
     ${bannerHTML(v)}
     ${scadenzaBannerHTML(v)}
-    <div class="card gauge-hero">
+    <div class="card gauge-hero" style="padding:20px 16px 16px;">
       <div class="muted" style="align-self:flex-start;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Prossima scadenza</div>
       ${nextManut ? gaugeSVG({value:kmRimanenti, max:maxRange, label: fmtKm(kmRimanenti).replace(' km',''), sublabel:`km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"`}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Nessuna scadenza km impostata', colorOverride:'var(--text-muted)'})}
-      <button data-action="openKmUpdate" data-id="${v.id}" style="margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:7px 14px 7px 10px;display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12.5px;cursor:pointer;">
+      <button data-action="openKmUpdate" data-id="${v.id}" style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">
         ${(() => { const s = ICONS.edit; return s.replace('class="icon"','class="icon" style="width:14px;height:14px;"'); })()}
         <span class="mono">${(() => { const d = daysBetween(v.dataUltimoAggiornamentoKm, todayISO()); return d<=0 ? 'Km aggiornati oggi' : d===1 ? 'Km aggiornati ieri' : `Km aggiornati ${d} giorni fa`; })()}</span>
       </button>
     </div>
     <div class="gauge-mini-row">
       <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="width:22px;height:22px;border-radius:7px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Consumo</span>
         </div>
         ${consumoKmL ? gaugeSVG({value: Math.min(consumoKmL,30), max:30, label: consumoKmL.toFixed(1), sublabel:'km al litro', size:104, colorOverride:'var(--accent)'}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Servono almeno 2 rifornimenti', size:104, colorOverride:'var(--text-muted)'})}
       </div>
       <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="width:22px;height:22px;border-radius:7px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:20px;height:20px;border-radius:6px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
         </div>
         ${gaugeSVG({value: prossimaScadenzaData ? Math.max(0,30-daysBetween(todayISO(),prossimaScadenzaData.data)) : 0, max:30, label: prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—', sublabel: prossimaScadenzaData ? tipoScadenzaLabel(prossimaScadenzaData.tipo)+' (gg)' : 'Nessuna scadenza', size:104})}
