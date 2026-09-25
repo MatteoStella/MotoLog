@@ -348,7 +348,15 @@ function viewDashboard(){
     ${scadenzaBannerHTML(v)}
     <div class="card gauge-hero" style="padding:20px 16px 16px;">
       <div class="muted" style="align-self:flex-start;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Prossima scadenza</div>
-      ${nextManut ? gaugeSVG({value:kmRimanenti, max:maxRange, label: fmtKm(kmRimanenti).replace(' km',''), sublabel:`km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"`}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Nessuna scadenza km impostata', colorOverride:'var(--text-muted)'})}
+      ${(() => {
+        const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
+        const barColor = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
+        const label = nextManut ? fmtKm(kmRimanenti).replace(' km','') : '—';
+        const sub = nextManut ? `km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"` : 'Nessuna scadenza km impostata';
+        return `<div class="mono" style="font-size:42px;font-weight:700;line-height:1;">${label}</div>
+        <div class="muted" style="font-size:13px;margin-top:4px;">${sub}</div>
+        <div style="width:150px;height:8px;border-radius:4px;background:var(--surface-2);margin-top:16px;overflow:hidden;"><div style="height:100%;width:${Math.round(pct*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>`;
+      })()}
       <button data-action="openKmUpdate" data-id="${v.id}" style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">
         ${(() => { const s = ICONS.edit; return s.replace('class="icon"','class="icon" style="width:14px;height:14px;"'); })()}
         <span class="mono">${(() => { const d = daysBetween(v.dataUltimoAggiornamentoKm, todayISO()); return d<=0 ? 'Km aggiornati oggi' : d===1 ? 'Km aggiornati ieri' : `Km aggiornati ${d} giorni fa`; })()}</span>
@@ -360,14 +368,16 @@ function viewDashboard(){
           <div style="width:20px;height:20px;border-radius:6px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Consumo</span>
         </div>
-        ${consumoKmL ? gaugeSVG({value: Math.min(consumoKmL,30), max:30, label: consumoKmL.toFixed(1), sublabel:'km al litro', size:104, colorOverride:'var(--accent)'}) : gaugeSVG({value:1,max:1,label:'—',sublabel:'Servono almeno 2 rifornimenti', size:104, colorOverride:'var(--text-muted)'})}
+        <div class="mono" style="font-size:20px;font-weight:700;">${consumoKmL ? consumoKmL.toFixed(1) : '—'}</div>
+        <div class="muted" style="font-size:11px;margin-top:4px;">${consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti'}</div>
       </div>
       <div class="gauge-mini">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <div style="width:20px;height:20px;border-radius:6px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
         </div>
-        ${gaugeSVG({value: prossimaScadenzaData ? Math.max(0,30-daysBetween(todayISO(),prossimaScadenzaData.data)) : 0, max:30, label: prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—', sublabel: prossimaScadenzaData ? tipoScadenzaLabel(prossimaScadenzaData.tipo)+' (gg)' : 'Nessuna scadenza', size:104})}
+        <div class="mono" style="font-size:20px;font-weight:700;">${prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—'}</div>
+        <div class="muted" style="font-size:11px;margin-top:4px;">${prossimaScadenzaData ? 'gg — '+tipoScadenzaLabel(prossimaScadenzaData.tipo) : 'Nessuna scadenza'}</div>
       </div>
     </div>
     <div class="card" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
