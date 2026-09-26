@@ -367,7 +367,7 @@ function viewDashboard(){
         return `<div class="mono" style="font-size:42px;font-weight:700;line-height:1;margin-top:14px;">${label}</div>
         <div class="muted" style="font-size:13px;margin-top:4px;">${sub}</div>
         <div style="align-self:stretch;margin-top:18px;">
-          <div style="width:100%;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;"><div style="height:100%;width:${Math.round(pct*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>
+          <div style="width:100%;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;"><div style="height:100%;width:${Math.round((1-pct)*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>
           ${nextManut ? `<div class="mono muted" style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;"><span>${fmtKm(nextManut.km||0)}</span><span>${fmtKm(nextManut.prossimaScadenzaKm)}</span></div>` : ''}
         </div>`;
       })()}
