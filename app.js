@@ -161,6 +161,7 @@ const state = {
   manualeError: null,
   calendarMonth: null,
   calendarSelectedDate: null,
+  backupExcluded: new Set(),
 };
 
 async function loadSettings(){
@@ -394,12 +395,12 @@ function viewDashboard(){
         <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? 'gg — '+tipoScadenzaLabel(prossimaScadenzaData.tipo) : 'Nessuna scadenza'}</div>
       </div>
     </div>
-    <div class="card" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
+    <div class="card" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Spesa ultimi 12 mesi</div>
         <div class="mono" style="font-size:20px;font-weight:700;margin-top:4px;">${fmtEuro(spesa12Mesi)}</div>
       </div>
-      <div style="width:34px;height:34px;border-radius:9px;background:var(--ok-dim);color:var(--ok);display:flex;align-items:center;justify-content:center;font-weight:700;">€</div>
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--ok-dim);color:var(--ok);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">€</div>
     </div>
 
     <div class="section-title">Eventi recenti</div>
@@ -805,6 +806,15 @@ function viewImpostazioni(){
     <div class="section-title">Backup dati</div>
     <div class="card">
       <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Esporta tutti i dati in un unico file JSON, o ripristina da un backup precedente.</p>
+      ${state.veicoli.length > 1 ? `
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Veicoli da includere</div>
+      ${state.veicoli.map(v=>`
+      <div class="card-row" style="margin-bottom:10px;">
+        <div style="font-size:14px;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
+        <button class="checkbox ${!state.backupExcluded.has(v.id)?'checked':''}" data-action="toggleBackupVeicolo" data-id="${v.id}">${!state.backupExcluded.has(v.id)?ICONS.check:''}</button>
+      </div>`).join('')}
+      <div style="height:1px;background:var(--border);margin:4px 0 14px;"></div>
+      ` : ''}
       <div class="card-row" style="margin-bottom:14px;">
         <div>
           <div style="font-size:14px;">Includi foto e documenti</div>
@@ -1318,12 +1328,22 @@ async function serializeBlobs(arr, field){
 
 async function esportaJSON(){
   const includiAllegati = state.settings.includiAllegatiBackup;
-  const [veicoli, manutenzioni, scadenze, problemi, rifornimenti] = await Promise.all(
+  const [veicoliAll, manutenzioniAll, scadenzeAll, problemiAll, rifornimentiAll] = await Promise.all(
     ['veicoli','manutenzioni','scadenze','problemi','rifornimenti'].map(dbGetAll)
   );
+  const veicoli = veicoliAll.filter(v => !state.backupExcluded.has(v.id));
+  if(!veicoli.length){ showToast("Seleziona almeno un veicolo da includere"); return; }
+  const includedIds = new Set(veicoli.map(v => v.id));
+  const manutenzioni = manutenzioniAll.filter(m => includedIds.has(m.veicoloId));
+  const scadenze = scadenzeAll.filter(s => includedIds.has(s.veicoloId));
+  const problemi = problemiAll.filter(p => includedIds.has(p.veicoloId));
+  const rifornimenti = rifornimentiAll.filter(r => includedIds.has(r.veicoloId));
   let manualiSer = [], allegatiSer = [];
   if(includiAllegati){
-    const [manuali, allegati] = await Promise.all([dbGetAll('manuali'), dbGetAll('allegati')]);
+    const [manualiAll, allegatiAll] = await Promise.all([dbGetAll('manuali'), dbGetAll('allegati')]);
+    const manuali = manualiAll.filter(m => includedIds.has(m.veicoloId));
+    const allegatiIdsNeeded = new Set(manutenzioni.flatMap(m => m.allegati||[]));
+    const allegati = allegatiAll.filter(a => allegatiIdsNeeded.has(a.id));
     manualiSer = await serializeBlobs(manuali, 'file');
     allegatiSer = await serializeBlobs(allegati, 'blob');
   }
@@ -1554,6 +1574,11 @@ app.addEventListener('click', async (e) => {
   }
   if(action==='toggleIncludiAllegati'){
     await saveSetting('includiAllegatiBackup', !state.settings.includiAllegatiBackup);
+    render();
+    return;
+  }
+  if(action==='toggleBackupVeicolo'){
+    if(state.backupExcluded.has(id)) state.backupExcluded.delete(id); else state.backupExcluded.add(id);
     render();
     return;
   }
