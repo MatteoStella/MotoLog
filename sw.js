@@ -1,4 +1,4 @@
-const CACHE = 'motolog-v13';
+const CACHE = 'motolog-v14';
 const SHELL = ['./', './index.html', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

@@ -403,15 +403,23 @@ function viewDashboard(){
     </div>
 
     <div class="section-title">Eventi recenti</div>
-    ${eventi.length ? `<div class="card">${eventi.map(e=>`
-      <button class="log-item" style="width:calc(100% + 16px);background:none;border:none;text-align:left;cursor:pointer;border-left:3px solid ${e._type==='problemi'?'var(--danger)':'var(--accent)'};padding-left:11px;margin-left:-16px;padding-right:0;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
-        <div class="log-dot" style="background:${e._type==='problemi'?'var(--danger-dim)':'var(--accent-dim)'};color:${e._type==='problemi'?'var(--danger)':'var(--accent)'};">${e._type==='problemi'?ICONS.alert:ICONS.wrench}</div>
+    ${eventi.length ? `<div class="card">${eventi.map((e,i)=>{
+      const colorOf = t => t==='problemi' ? 'var(--danger)' : 'var(--accent)';
+      const topColor = colorOf(e._type);
+      const nextColor = i < eventi.length-1 ? colorOf(eventi[i+1]._type) : topColor;
+      const borderCss = topColor===nextColor
+        ? `border-left:3px solid ${topColor};`
+        : `border-left:3px solid;border-image:linear-gradient(to bottom, ${topColor}, ${nextColor}) 1;`;
+      return `
+      <button class="log-item" style="width:calc(100% + 16px);background:none;border:none;text-align:left;cursor:pointer;${borderCss}padding-left:11px;margin-left:-16px;padding-right:0;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
+        <div class="log-dot" style="background:${e._type==='problemi'?'var(--danger-dim)':'var(--accent-dim)'};color:${topColor};">${e._type==='problemi'?ICONS.alert:ICONS.wrench}</div>
         <div class="log-body">
           <div class="log-title">${escapeHTML(e.label)}</div>
           <div class="log-sub">${e.sub}</div>
         </div>
         <div class="log-meta">${fmtDate(e.data)}</div>
-      </button>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento registrato</div>`}
+      </button>`;
+    }).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento registrato</div>`}
   </div>`;
 }
 
