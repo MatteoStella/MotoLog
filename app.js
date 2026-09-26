@@ -409,7 +409,7 @@ function viewDashboard(){
       const nextColor = i < eventi.length-1 ? colorOf(eventi[i+1]._type) : topColor;
       const borderCss = topColor===nextColor
         ? `border-left:3px solid ${topColor};`
-        : `border-left:3px solid;border-image:linear-gradient(to bottom, ${topColor}, ${nextColor}) 1;`;
+        : `border-left:3px solid;border-image:linear-gradient(to bottom, ${topColor} 0%, ${topColor} 65%, ${nextColor} 100%) 1;`;
       return `
       <button class="log-item" style="width:calc(100% + 16px);background:none;border:none;text-align:left;cursor:pointer;${borderCss}padding-left:11px;margin-left:-16px;padding-right:0;" data-action="openEdit" data-type="${e._type}" data-id="${e.id}">
         <div class="log-dot" style="background:${e._type==='problemi'?'var(--danger-dim)':'var(--accent-dim)'};color:${topColor};">${e._type==='problemi'?ICONS.alert:ICONS.wrench}</div>
