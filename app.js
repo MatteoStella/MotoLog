@@ -552,6 +552,15 @@ function logItemHTML(it){
   </button>`;
 }
 
+function shiftCalendarMonth(delta){
+  if(!state.calendarMonth) state.calendarMonth = todayISO().slice(0,7);
+  const [y,m] = state.calendarMonth.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  state.calendarMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  state.calendarSelectedDate = null;
+  render();
+}
+
 function getAllEventItems(){
   return [
     ...state.cache.manutenzioni.map(m=>({...m,_type:'manutenzioni'})),
@@ -854,14 +863,18 @@ function attachThumbsHTML(){
     </div>`).join('');
 }
 
+function presetDataDefault(){
+  return (state.tab==='calendario' && state.calendarSelectedDate) ? state.calendarSelectedDate : todayISO();
+}
+
 function manutenzioneFormModal(payload){
   const m = payload?.id ? state.cache.manutenzioni.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
     <div class="modal-header"><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
-      <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||todayISO()}" required data-action="toggleSyncKmField"></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
-      <div class="field" id="syncKmField" style="margin-top:10px;${(m?.data||todayISO())===todayISO()?'':'display:none;'}">
+      <div class="field" id="syncKmField" style="margin-top:10px;${(m?.data||presetDataDefault())===todayISO()?'':'display:none;'}">
         <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer;">
           <input type="checkbox" name="syncKm" checked style="width:auto;">
           <span style="font-size:13px;color:var(--text);">Aggiorna anche i km attuali del veicolo</span>
@@ -903,7 +916,7 @@ function scadenzaFormModal(payload){
           ${['bollo','assicurazione','revisione','tagliando','altro'].map(t=>`<option value="${t}" ${s?.tipo===t?'selected':''}>${tipoScadenzaLabel(t)}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>Data</label><input name="data" type="date" value="${s?.data||todayISO()}" required></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${s?.data||presetDataDefault()}" required></div>
       <div class="field"><label>Ricorrenza</label>
         <select name="ricorrenza">
           <option value="nessuna" ${s?.ricorrenza==='nessuna'?'selected':''}>Nessuna</option>
@@ -926,7 +939,7 @@ function problemaFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><h2>${p?'Modifica problema':'Nuovo problema'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
-      <div class="field"><label>Data</label><input name="data" type="date" value="${p?.data||todayISO()}" required></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${p?.data||presetDataDefault()}" required></div>
       <div class="field"><label>Sintomi</label><textarea name="sintomi" rows="2" required>${escapeHTML(p?.sintomi||'')}</textarea></div>
       <div class="field"><label>Causa (se nota)</label><textarea name="causa" rows="2">${escapeHTML(p?.causa||'')}</textarea></div>
       <div class="field"><label>Soluzione</label><textarea name="soluzione" rows="2">${escapeHTML(p?.soluzione||'')}</textarea></div>
@@ -949,9 +962,9 @@ function rifornimentoFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
-      <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||todayISO()}" required data-action="toggleSyncKmField"></div>
+      <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${r?.km??currentVeicolo()?.kmAttuali??0}" required></div>
-      <div class="field" id="syncKmField" style="margin-top:10px;${(r?.data||todayISO())===todayISO()?'':'display:none;'}">
+      <div class="field" id="syncKmField" style="margin-top:10px;${(r?.data||presetDataDefault())===todayISO()?'':'display:none;'}">
         <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer;">
           <input type="checkbox" name="syncKm" checked style="width:auto;">
           <span style="font-size:13px;color:var(--text);">Aggiorna anche i km attuali del veicolo</span>
@@ -1342,7 +1355,7 @@ let touchStartX = 0, touchStartY = 0, touchActive = false;
 app.addEventListener('touchstart', (e) => {
   touchActive = false;
   if(state.modal || state.lightbox) return;
-  if(state.tab === 'veicoli-detail' || state.tab === 'calendario') return;
+  if(state.tab === 'veicoli-detail') return;
   if(e.target.closest('.veh-switcher, .chip-row')) return; // non rubare lo scroll orizzontale locale
   if(e.touches.length !== 1) return;
   touchStartX = e.touches[0].clientX;
@@ -1357,6 +1370,7 @@ app.addEventListener('touchend', (e) => {
   const dx = touch.clientX - touchStartX;
   const dy = touch.clientY - touchStartY;
   if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return; // gesto troppo corto o troppo verticale
+  if(state.tab === 'calendario'){ shiftCalendarMonth(dx < 0 ? 1 : -1); return; }
   const idx = TAB_ORDER.indexOf(state.tab);
   if(idx === -1) return;
   if(dx < 0 && idx < TAB_ORDER.length - 1){ state.tab = TAB_ORDER[idx + 1]; render(); }
@@ -1396,12 +1410,8 @@ app.addEventListener('click', async (e) => {
   if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
   if(action==='openCalendario'){ state.calendarMonth = todayISO().slice(0,7); state.calendarSelectedDate = todayISO(); state.tab='calendario'; render(); return; }
   if(action==='calPrevMonth' || action==='calNextMonth'){
-    const delta = action==='calPrevMonth' ? -1 : 1;
-    const [y,m] = state.calendarMonth.split('-').map(Number);
-    const d = new Date(y, m-1+delta, 1);
-    state.calendarMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    state.calendarSelectedDate = null;
-    render(); return;
+    shiftCalendarMonth(action==='calPrevMonth' ? -1 : 1);
+    return;
   }
   if(action==='calSelectDay'){ state.calendarSelectedDate = state.calendarSelectedDate===el.dataset.date ? null : el.dataset.date; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
