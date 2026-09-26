@@ -364,20 +364,20 @@ function viewDashboard(){
     </div>
     <div class="gauge-mini-row">
       <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
           <div style="width:20px;height:20px;border-radius:6px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Consumo</span>
         </div>
         <div class="mono" style="font-size:20px;font-weight:700;">${consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</div>
-        <div class="muted" style="font-size:11px;margin-top:4px;">${consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti'}</div>
+        <div class="muted" style="font-size:11px;">${consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti'}</div>
       </div>
       <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
           <div style="width:20px;height:20px;border-radius:6px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
         </div>
         <div class="mono" style="font-size:20px;font-weight:700;">${prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—'}</div>
-        <div class="muted" style="font-size:11px;margin-top:4px;">${prossimaScadenzaData ? 'gg — '+tipoScadenzaLabel(prossimaScadenzaData.tipo) : 'Nessuna scadenza'}</div>
+        <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? 'gg — '+tipoScadenzaLabel(prossimaScadenzaData.tipo) : 'Nessuna scadenza'}</div>
       </div>
     </div>
     <div class="card" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
