@@ -348,16 +348,28 @@ function viewDashboard(){
   <div class="content">
     ${bannerHTML(v)}
     ${scadenzaBannerHTML(v)}
-    <div class="card gauge-hero" style="padding:20px 16px 16px;">
-      <div class="muted" style="align-self:flex-start;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Prossima scadenza</div>
+    <div class="card gauge-hero" style="padding:20px 18px 18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;align-self:stretch;">
+        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Prossima scadenza</div>
+        ${(() => {
+          const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
+          const badgeColor = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
+          const badgeBg = !nextManut ? 'var(--surface-2)' : pct>0.5 ? 'var(--ok-dim)' : pct>0.2 ? 'var(--warn-dim)' : 'var(--danger-dim)';
+          const s = ICONS.wrench;
+          return `<div style="width:28px;height:28px;border-radius:8px;background:${badgeBg};color:${badgeColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${s.replace('class="icon"','class="icon" style="width:15px;height:15px;"')}</div>`;
+        })()}
+      </div>
       ${(() => {
         const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
         const barColor = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
         const label = nextManut ? fmtKm(kmRimanenti).replace(' km','') : '—';
-        const sub = nextManut ? `km a "${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}"` : 'Nessuna scadenza km impostata';
-        return `<div class="mono" style="font-size:42px;font-weight:700;line-height:1;">${label}</div>
+        const sub = nextManut ? `km a ${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}` : 'Nessuna scadenza km impostata';
+        return `<div class="mono" style="font-size:42px;font-weight:700;line-height:1;margin-top:14px;">${label}</div>
         <div class="muted" style="font-size:13px;margin-top:4px;">${sub}</div>
-        <div style="width:150px;height:8px;border-radius:4px;background:var(--surface-2);margin-top:16px;overflow:hidden;"><div style="height:100%;width:${Math.round(pct*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>`;
+        <div style="align-self:stretch;margin-top:18px;">
+          <div style="width:100%;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;"><div style="height:100%;width:${Math.round(pct*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>
+          ${nextManut ? `<div class="mono muted" style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;"><span>${fmtKm(nextManut.km||0)}</span><span>${fmtKm(nextManut.prossimaScadenzaKm)}</span></div>` : ''}
+        </div>`;
       })()}
       <button data-action="openKmUpdate" data-id="${v.id}" style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">
         ${(() => { const s = ICONS.edit; return s.replace('class="icon"','class="icon" style="width:14px;height:14px;"'); })()}
