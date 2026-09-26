@@ -112,6 +112,21 @@
   .log-title{font-size:15px;font-weight:500;}
   .log-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
   .log-meta{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+  /* Calendario */
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cal-month-label{font-family:var(--font-display);font-weight:600;font-size:16px;}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-cell{aspect-ratio:1;background:none;border:1px solid transparent;border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text);font-size:13px;}
+  .cal-cell:active{transform:scale(.94);}
+  .cal-cell.cal-empty{visibility:hidden;pointer-events:none;}
+  .cal-cell.cal-today{border-color:var(--accent);}
+  .cal-cell.cal-selected{background:var(--accent-dim);border-color:var(--accent);}
+  .cal-dots{display:flex;gap:2px;}
+  .cal-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin:16px 2px 4px;font-size:11px;color:var(--text-muted);}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
   .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;}
   .badge-ok{background:var(--ok-dim);color:var(--ok);}
   .badge-warn{background:var(--warn-dim);color:var(--warn);}

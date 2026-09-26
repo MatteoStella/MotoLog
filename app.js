@@ -159,6 +159,8 @@ const state = {
   editAttachments: [],
   lightbox: null,
   manualeError: null,
+  calendarMonth: null,
+  calendarSelectedDate: null,
 };
 
 async function loadSettings(){
@@ -548,6 +550,74 @@ function logItemHTML(it){
     </div>
     <div class="log-meta">${fmtDate(it.data)}</div>
   </button>`;
+}
+
+function getAllEventItems(){
+  return [
+    ...state.cache.manutenzioni.map(m=>({...m,_type:'manutenzioni'})),
+    ...state.cache.scadenze.map(s=>({...s,_type:'scadenze'})),
+    ...state.cache.problemi.map(p=>({...p,_type:'problemi'})),
+    ...state.cache.rifornimenti.map(r=>({...r,_type:'rifornimenti'})),
+  ];
+}
+
+function dotColorForType(type){
+  return type==='manutenzioni' ? 'var(--accent)' : type==='scadenze' ? 'var(--warn)' : type==='problemi' ? 'var(--danger)' : 'var(--ok)';
+}
+
+function viewCalendario(){
+  if(!state.veicoli.length){
+    return `<div class="content">${emptyState('calendar','Nessun dato','Aggiungi prima un veicolo dalla scheda Veicoli.',null,null)}</div>`;
+  }
+  if(!state.calendarMonth) state.calendarMonth = todayISO().slice(0,7);
+  const [year, month] = state.calendarMonth.split('-').map(Number);
+  const first = new Date(year, month-1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const startOffset = (first.getDay()+6)%7;
+
+  const items = getAllEventItems();
+  const byDate = {};
+  items.forEach(it=>{ if(it.data) (byDate[it.data] ||= []).push(it); });
+
+  const monthLabel = first.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+  const selected = state.calendarSelectedDate;
+  const dayItems = selected
+    ? (byDate[selected]||[]).sort((a,b)=> new Date(b.data)-new Date(a.data))
+    : items.filter(it=> it.data && it.data.slice(0,7)===state.calendarMonth).sort((a,b)=> new Date(b.data)-new Date(a.data));
+
+  const weekDays = ['L','M','M','G','V','S','D'];
+  let cells = '';
+  for(let i=0;i<startOffset;i++) cells += `<div class="cal-cell cal-empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvents = byDate[dateStr] || [];
+    const types = [...new Set(dayEvents.map(e=>e._type))];
+    const isToday = dateStr === todayISO();
+    const isSelected = dateStr === selected;
+    const label = `${d} ${monthLabel}${dayEvents.length ? `, ${dayEvents.length} evento${dayEvents.length>1?'i':''}` : ''}`;
+    cells += `<button class="cal-cell ${isToday?'cal-today':''} ${isSelected?'cal-selected':''}" data-action="calSelectDay" data-date="${dateStr}" aria-label="${label}" aria-pressed="${isSelected}">
+      <span class="cal-daynum mono">${d}</span>
+      ${types.length ? `<span class="cal-dots">${types.slice(0,3).map(t=>`<span class="cal-dot" style="background:${dotColorForType(t)}"></span>`).join('')}</span>` : ''}
+    </button>`;
+  }
+
+  return `<div class="content">
+    <div class="cal-nav">
+      <button class="icon-btn" data-action="calPrevMonth" aria-label="Mese precedente"><span style="display:inline-flex;transform:rotate(180deg);">${ICONS.chevron}</span></button>
+      <div class="cal-month-label">${monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)}</div>
+      <button class="icon-btn" data-action="calNextMonth" aria-label="Mese successivo">${ICONS.chevron}</button>
+    </div>
+    <div class="cal-weekdays">${weekDays.map(w=>`<div>${w}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>
+    <div class="cal-legend">
+      <span><span class="cal-dot" style="background:var(--accent)"></span>Manutenzioni</span>
+      <span><span class="cal-dot" style="background:var(--warn)"></span>Scadenze</span>
+      <span><span class="cal-dot" style="background:var(--danger)"></span>Problemi</span>
+      <span><span class="cal-dot" style="background:var(--ok)"></span>Rifornimenti</span>
+    </div>
+    <div class="section-title">${selected ? fmtDate(selected) : 'Eventi del mese'}</div>
+    ${dayItems.length ? `<div class="card">${dayItems.map(it=>logItemHTML(it)).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento${selected?' in questo giorno':' in questo mese'}</div>`}
+  </div>`;
 }
 
 function viewAI(){
@@ -1272,7 +1342,7 @@ let touchStartX = 0, touchStartY = 0, touchActive = false;
 app.addEventListener('touchstart', (e) => {
   touchActive = false;
   if(state.modal || state.lightbox) return;
-  if(state.tab === 'veicoli-detail') return;
+  if(state.tab === 'veicoli-detail' || state.tab === 'calendario') return;
   if(e.target.closest('.veh-switcher, .chip-row')) return; // non rubare lo scroll orizzontale locale
   if(e.touches.length !== 1) return;
   touchStartX = e.touches[0].clientX;
@@ -1324,6 +1394,16 @@ app.addEventListener('click', async (e) => {
   if(action==='dismissManualeError'){ state.manualeError=null; render(); return; }
   if(action==='setTab'){ state.tab=id; render(); return; }
   if(action==='setLogFilter'){ state.logFilter=id; render(); return; }
+  if(action==='openCalendario'){ state.calendarMonth = todayISO().slice(0,7); state.calendarSelectedDate = todayISO(); state.tab='calendario'; render(); return; }
+  if(action==='calPrevMonth' || action==='calNextMonth'){
+    const delta = action==='calPrevMonth' ? -1 : 1;
+    const [y,m] = state.calendarMonth.split('-').map(Number);
+    const d = new Date(y, m-1+delta, 1);
+    state.calendarMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    state.calendarSelectedDate = null;
+    render(); return;
+  }
+  if(action==='calSelectDay'){ state.calendarSelectedDate = state.calendarSelectedDate===el.dataset.date ? null : el.dataset.date; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
   if(action==='dismissBanner'){ state.bannerDismissed[id+todayISO()]=true; render(); return; }
   if(action==='dismissScadenzaBanner'){ state.bannerDismissed['scad_'+id+'_'+todayISO()]=true; render(); return; }
@@ -1678,20 +1758,28 @@ function headerHTML(){
   if(state.tab==='veicoli-detail'){
     const v = currentVeicolo();
     return `<div class="topbar">
-      <button class="icon-btn" data-action="setTab" data-id="veicoli">${ICONS.back}</button>
+      <button class="icon-btn" data-action="setTab" data-id="veicoli" aria-label="Torna ai veicoli">${ICONS.back}</button>
       <h1>${v?escapeHTML(v.marca)+' '+escapeHTML(v.modello):''}</h1>
       <div style="width:38px;"></div>
+    </div>`;
+  }
+  if(state.tab==='calendario'){
+    return `<div class="topbar">
+      <button class="icon-btn" data-action="setTab" data-id="dashboard" aria-label="Torna alla dashboard">${ICONS.back}</button>
+      <h1>Calendario</h1>
+      <div style="width:44px;"></div>
     </div>`;
   }
   const titles = {dashboard:'MyGarage', veicoli:'I tuoi veicoli', log:'Diario', ai:'Assistente AI', impostazioni:'Impostazioni'};
   return `<div class="topbar">
     <h1>${titles[state.tab]||'MyGarage'}</h1>
+    ${state.tab==='dashboard' ? `<button class="icon-btn" data-action="openCalendario" aria-label="Apri calendario eventi">${ICONS.calendar}</button>` : ''}
   </div>`;
 }
 
 function vehicleSwitcherHTML(){
   if(state.tab==='veicoli-detail' || state.tab==='ai' && false) return '';
-  if(!['dashboard','log','ai'].includes(state.tab) || state.veicoli.length<1) return '';
+  if(!['dashboard','log','ai','calendario'].includes(state.tab) || state.veicoli.length<1) return '';
   if(state.veicoli.length===0) return '';
   return `<div class="veh-switcher">
     ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?'🏍':'🚗'} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
@@ -1716,6 +1804,7 @@ function render(){
   else if(state.tab==='veicoli') body = viewVeicoli();
   else if(state.tab==='veicoli-detail') body = viewVeicoloDetail(currentVeicolo());
   else if(state.tab==='log') body = viewLog();
+  else if(state.tab==='calendario') body = viewCalendario();
   else if(state.tab==='ai') body = viewAI();
   else if(state.tab==='impostazioni') body = viewImpostazioni();
 
