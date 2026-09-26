@@ -334,7 +334,7 @@ function viewDashboard(){
   }
 
   const oggiMeno365 = new Date(); oggiMeno365.setDate(oggiMeno365.getDate()-365);
-  const spesa12Mesi = [...state.cache.manutenzioni, ...state.cache.rifornimenti]
+  const spesa12Mesi = [...state.cache.manutenzioni, ...state.cache.rifornimenti, ...state.cache.scadenze]
     .filter(x => new Date(x.data) >= oggiMeno365)
     .reduce((s,x)=> s+(x.costo||0), 0);
 
@@ -553,7 +553,7 @@ function logItemHTML(it){
     title=categoriaLabel(it.categoria,it.categoriaCustom); sub=`${fmtKm(it.km)}${it.costo?' · '+fmtEuro(it.costo):''}`;
   } else if(it._type==='scadenze'){
     icon=ICONS.calendar; iconBg='var(--warn-dim)'; iconColor='var(--warn)';
-    title=tipoScadenzaLabel(it.tipo); sub=it.stato==='completata'?'Completata':'Attiva';
+    title=tipoScadenzaLabel(it.tipo); sub=(it.stato==='completata'?'Completata':'Attiva')+(it.costo?' · '+fmtEuro(it.costo):'');
   } else if(it._type==='problemi'){
     icon=ICONS.alert; iconBg='var(--danger-dim)'; iconColor='var(--danger)';
     title=it.sintomi; sub=it.stato==='risolto'?'Risolto':'Aperto';
@@ -954,6 +954,7 @@ function scadenzaFormModal(payload){
           <option value="biennale" ${s?.ricorrenza==='biennale'?'selected':''}>Biennale</option>
         </select>
       </div>
+      <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${s?.costo??''}" placeholder="Facoltativo"></div>
       ${s ? `<a href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:14px;">${ICONS.calendar} Aggiungi a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
       ${s && s.stato!=='completata' ? `<button type="button" class="btn btn-ghost btn-block" style="margin-top:14px;" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
@@ -1765,6 +1766,7 @@ app.addEventListener('submit', async (e) => {
         id: existingId || uid(), veicoloId: v.id,
         tipo: fd.get('tipo'), data: fd.get('data'), ricorrenza: fd.get('ricorrenza'),
         ricorrenzaMesi: existing?.ricorrenzaMesi ?? null,
+        costo: fd.get('costo') ? parseFloat(fd.get('costo')) : null,
         origine: existing?.origine || 'manuale',
         stato: existing?.stato || 'attiva',
       };
