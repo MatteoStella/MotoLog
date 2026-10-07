@@ -23,7 +23,8 @@
 
 /* ---------------- CONFIG ---------------- */
 const GEMINI_MODEL = "gemini-flash-latest"; // alias ufficiale, punta sempre all'ultima versione stabile
-function geminiURL(){ return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`; }
+const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash"; // usato solo se il modello principale è sovraccarico
+function geminiURL(model){ return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`; }
 const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
@@ -162,6 +163,7 @@ const state = {
   calendarMonth: null,
   calendarSelectedDate: null,
   backupExcluded: new Set(),
+  busyStatus: null,
 };
 
 async function loadSettings(){
@@ -679,7 +681,7 @@ function viewAIChat(v){
     <div class="chat-scroll">
       ${state.chatHistory.length===0 ? `<div class="muted" style="text-align:center;padding:30px 10px;font-size:13.5px;">Chiedimi consigli su rumori strani, spie accese, o problemi ricorrenti su ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}. Uso lo storico problemi come contesto.</div>` : ''}
       ${state.chatHistory.map(m=>`<div class="msg ${m.role==='user'?'msg-user':'msg-ai'}">${escapeHTML(m.content)}</div>`).join('')}
-      ${state.busy ? `<div class="msg msg-ai"><div class="spinner"></div></div>` : ''}
+      ${state.busy ? `<div class="msg msg-ai" style="display:flex;align-items:center;gap:8px;"><div class="spinner"></div>${state.busyStatus ? `<span style="font-size:13px;">${escapeHTML(state.busyStatus)}</span>` : ''}</div>` : ''}
     </div>
     <div class="chat-input-row">
       <input type="text" id="chatInput" placeholder="Scrivi un messaggio..." ${state.busy?'disabled':''}>
@@ -697,7 +699,7 @@ function viewAIManuale(v){
           <div style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHTML(state.cache.manuale.nome)}</span></div>
         </div>
         <button class="btn btn-primary btn-block" data-action="analizzaManuale" ${state.busy?'disabled':''}>
-          ${state.busy ? '<div class="spinner"></div> Analisi in corso...' : 'Analizza e proponi scadenze'}
+          ${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Analisi in corso...')}` : 'Analizza e proponi scadenze'}
         </button>
         ${state.manualeError ? `
         <div class="banner" style="margin-top:12px;margin-bottom:0;">
@@ -939,7 +941,7 @@ function scadenzaFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     ${s?.stato==='completata' ? `<div class="badge badge-ok" style="margin-bottom:14px;display:inline-block;">✓ Completata</div>` : ''}
-    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;">${ICONS.camera} Scansiona documento (AI)<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
+    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Scansiona documento (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
     <form id="entryForm">
       <div class="field"><label>Tipo</label>
         <select name="tipo">
@@ -1016,7 +1018,7 @@ function kmUpdateModal(veicoloId){
   const v = state.veicoli.find(x=>x.id===veicoloId);
   return modalWrapper(`
     <div class="modal-header"><h2>Aggiorna km</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
-    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:14px;">${ICONS.camera} Leggi da foto contachilometri (AI)<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
+    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:14px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Leggi da foto contachilometri (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
     <form id="kmForm">
       <div class="field"><label>Km attuali</label><input name="km" id="kmInput" type="number" value="${v.kmAttuali}" required></div>
       <div class="actions-footer">
@@ -1027,28 +1029,64 @@ function kmUpdateModal(veicoloId){
 }
 
 /* ---------------- AI (Gemini API — chiave personale dell'utente) ---------------- */
-async function callGemini({ system, contents, maxOutputTokens=1024, _retry=0 }){
-  const key = state.settings.geminiApiKey;
-  if(!key) throw new Error("Nessuna chiave Gemini configurata. Vai in Impostazioni per aggiungerla.");
-  const body = { contents, generationConfig: { maxOutputTokens } };
-  if(system) body.systemInstruction = { parts: [{ text: system }] };
-  const res = await fetch(geminiURL(), {
+const GEMINI_RETRY_DELAYS = [1500, 3000, 6000, 10000]; // backoff crescente sul modello principale
+
+function setBusyStatus(msg){ state.busyStatus = msg; render(); }
+
+async function callGeminiOnce(model, body, key){
+  const res = await fetch(geminiURL(model), {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify(body)
   });
   const data = await res.json();
   if(!res.ok){
-    const isOverload = res.status===503 || res.status===429;
-    if(isOverload && _retry < 2){
-      await new Promise(r=>setTimeout(r, 1500 * (_retry+1)));
-      return callGemini({ system, contents, maxOutputTokens, _retry: _retry+1 });
-    }
-    const msg = data?.error?.message || ("Errore API: " + res.status);
-    throw new Error(isOverload ? `${msg} (Google, dopo ${_retry+1} tentativi — riprova tra un minuto)` : msg);
+    const err = new Error(data?.error?.message || ("Errore API: " + res.status));
+    err.overload = res.status===503 || res.status===429;
+    throw err;
   }
   const parts = data.candidates?.[0]?.content?.parts || [];
   return parts.map(p=>p.text||'').join('\n');
+}
+
+async function callGemini({ system, contents, maxOutputTokens=1024 }){
+  const key = state.settings.geminiApiKey;
+  if(!key) throw new Error("Nessuna chiave Gemini configurata. Vai in Impostazioni per aggiungerla.");
+  const body = { contents, generationConfig: { maxOutputTokens } };
+  if(system) body.systemInstruction = { parts: [{ text: system }] };
+
+  // Tentativi sul modello principale, con attese crescenti
+  for(let i=0; i<=GEMINI_RETRY_DELAYS.length; i++){
+    try{
+      if(i>0) setBusyStatus(`Il modello è sovraccarico, nuovo tentativo (${i+1}/${GEMINI_RETRY_DELAYS.length+1})...`);
+      const text = await callGeminiOnce(GEMINI_MODEL, body, key);
+      state.busyStatus = null;
+      return text;
+    } catch(e){
+      if(!e.overload){ state.busyStatus = null; throw e; }
+      if(i < GEMINI_RETRY_DELAYS.length) await new Promise(r=>setTimeout(r, GEMINI_RETRY_DELAYS[i]));
+    }
+  }
+
+  // Modello principale esausto: prova un modello di riserva
+  setBusyStatus("Provo un modello alternativo...");
+  try{
+    const text = await callGeminiOnce(GEMINI_FALLBACK_MODEL, body, key);
+    state.busyStatus = null;
+    return text;
+  } catch(e2){
+    if(!e2.overload){ state.busyStatus = null; throw e2; }
+    setBusyStatus("Anche il modello alternativo è sovraccarico, ultimo tentativo...");
+    await new Promise(r=>setTimeout(r, 2500));
+    try{
+      const text = await callGeminiOnce(GEMINI_FALLBACK_MODEL, body, key);
+      state.busyStatus = null;
+      return text;
+    } catch(e3){
+      state.busyStatus = null;
+      throw new Error(`${e3.message} (Google, server sovraccarichi — riprova tra qualche minuto)`);
+    }
+  }
 }
 function extractJSON(text){
   const cleaned = text.replace(/```json|```/g,'').trim();
@@ -1071,7 +1109,7 @@ async function actionAnalizzaManuale(){
   const v = currentVeicolo();
   const manuale = state.cache.manuale;
   if(!v || !manuale) return;
-  state.busy = true; state.manualeError = null; render();
+  state.busy = true; state.busyStatus = null; state.manualeError = null; render();
   try{
     const base64 = await blobToBase64(manuale.file);
     const text = await callGemini({
@@ -1087,7 +1125,7 @@ async function actionAnalizzaManuale(){
   } catch(e){
     state.manualeError = e.message || "Analisi non riuscita. Riprova.";
   } finally {
-    state.busy = false; render();
+    state.busy = false; state.busyStatus = null; render();
   }
 }
 
@@ -1113,7 +1151,7 @@ async function actionSendChat(){
   if(!text) return;
   const v = currentVeicolo();
   state.chatHistory.push({role:'user', content:text});
-  state.busy = true; render();
+  state.busy = true; state.busyStatus = null; render();
   try{
     const problemiSummary = state.cache.problemi.map(p=>`- [${p.stato}] ${p.sintomi}${p.soluzione?' → risolto con: '+p.soluzione:''}`).join('\n') || 'Nessuno';
     const system = `Sei un meccanico esperto e assistente per motociclisti/automobilisti. Veicolo: ${v.marca} ${v.modello} ${v.anno} (${v.tipo}), km attuali ${v.kmAttuali}. Storico problemi:\n${problemiSummary}\nRispondi in italiano, in modo conciso e pratico.`;
@@ -1125,13 +1163,13 @@ async function actionSendChat(){
   } catch(e){
     state.chatHistory.push({role:'model', content:'Errore: ' + (e.message || 'chiamata non riuscita')});
   } finally {
-    state.busy = false; input.value=''; render();
+    state.busy = false; state.busyStatus = null; input.value=''; render();
     setTimeout(()=>{ const el=document.querySelector('.chat-scroll'); if(el) el.scrollTop = el.scrollHeight; }, 50);
   }
 }
 
 async function actionScansionaKm(file, veicoloId){
-  state.busy = true; render();
+  state.busy = true; state.busyStatus = null; render();
   try{
     const base64 = await blobToBase64(file);
     const text = await callGemini({
@@ -1152,12 +1190,12 @@ async function actionScansionaKm(file, veicoloId){
   } catch(e){
     showToast("Errore: " + (e.message || "lettura foto non riuscita"));
   } finally {
-    state.busy = false; render();
+    state.busy = false; state.busyStatus = null; render();
   }
 }
 
 async function actionScansionaScadenza(file){
-  state.busy = true; render();
+  state.busy = true; state.busyStatus = null; render();
   try{
     const base64 = await blobToBase64(file);
     const text = await callGemini({
@@ -1177,7 +1215,7 @@ async function actionScansionaScadenza(file){
   } catch(e){
     showToast("Errore: " + (e.message || "lettura documento non riuscita"));
   } finally {
-    state.busy = false; render();
+    state.busy = false; state.busyStatus = null; render();
   }
 }
 
