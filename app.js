@@ -1030,7 +1030,7 @@ function rifornimentoFormModal(payload){
       </div>
       <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
-      ${r && r.litri>0 ? `<div class="muted mono" style="font-size:12.5px;margin-top:-8px;">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
+      ${r && r.litri>0 ? `<div class="muted mono" style="font-size:12.5px;margin-top:6px;padding-left:2px;">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
       <div class="actions-footer">
         ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveRifornimento" data-id="${r?.id||''}">Salva</button>
