@@ -108,6 +108,10 @@ const ICONS = {
   file: `<svg class="icon" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/></svg>`,
   send: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 12 20 4l-8 16-2-7-6-1z"/></svg>`,
   check: `<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2.4;"><path d="M5 12l5 5L19 7"/></svg>`,
+  oliva: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3c3 4.2 6 7.7 6 11a6 6 0 0 1-12 0c0-3.3 3-6.8 6-11z"/></svg>`,
+  gomma: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 4.7V9M12 15v4.3M5.9 8.3l3.4 2M14.7 13.7l3.4 2M5.9 15.7l3.4-2M14.7 10.3l3.4-2"/></svg>`,
+  catena: `<svg class="icon" viewBox="0 0 24 24"><rect x="2.3" y="9.3" width="7" height="5.4" rx="2.7"/><rect x="7.9" y="9.3" width="7" height="5.4" rx="2.7"/><rect x="13.5" y="9.3" width="7" height="5.4" rx="2.7"/><circle cx="7.9" cy="12" r="0.95" fill="currentColor" stroke="none"/><circle cx="13.5" cy="12" r="0.95" fill="currentColor" stroke="none"/></svg>`,
+  tagliandoIcon: `<svg class="icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 12.5l2 2 4.5-5"/></svg>`,
   settings: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2.06 2.06 0 1 1-2.92 2.92l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2.06 2.06 0 1 1-4.13 0v-.1a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2.06 2.06 0 1 1-2.92-2.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2.06 2.06 0 1 1 0-4.13h.1A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2.06 2.06 0 1 1 2.92-2.92l.06.06a1.7 1.7 0 0 0 1.87.34H9.2A1.7 1.7 0 0 0 10.75 3v-.1a2.06 2.06 0 1 1 4.13 0V3a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2.06 2.06 0 1 1 2.92 2.92l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2.06 2.06 0 1 1 0 4.13h-.1a1.7 1.7 0 0 0-1.5 1.87z"/></svg>`,
 };
 
@@ -514,6 +518,15 @@ function tipoScadenzaLabel(t){
   return map[t] || t;
 }
 
+function dateGroupLabel(dataISO){
+  const diff = daysBetween(dataISO, todayISO());
+  if(diff < 0) return 'In programma';
+  if(diff === 0) return 'Oggi';
+  if(diff === 1) return 'Ieri';
+  if(diff <= 7) return 'Questa settimana';
+  return 'Più vecchi';
+}
+
 function viewLog(){
   if(!state.veicoli.length){
     return `<div class="content">${emptyState('list','Nessun dato','Aggiungi prima un veicolo dalla scheda Veicoli.',null,null)}</div>`;
@@ -540,18 +553,30 @@ function viewLog(){
   }
   items.sort((a,b)=> new Date(b.data)-new Date(a.data));
 
+  const groups = [];
+  for(const it of items){
+    const label = dateGroupLabel(it.data);
+    const last = groups[groups.length-1];
+    if(!last || last.label !== label) groups.push({label, items:[it]});
+    else last.items.push(it);
+  }
+
   return `<div class="content">
     <div class="chip-row">
       ${filters.map(f=>`<button class="chip ${state.logFilter===f.id?'active':''}" data-action="setLogFilter" data-id="${f.id}">${f.label}</button>`).join('')}
     </div>
-    ${items.length ? `<div class="card">${items.map(it=>logItemHTML(it)).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun elemento in questa categoria</div>`}
+    ${items.length ? groups.map(g=>`
+      <div class="log-group">${g.label}</div>
+      <div class="card">${g.items.map(it=>logItemHTML(it)).join('')}</div>
+    `).join('') : `<div class="card muted" style="text-align:center;padding:24px;">Nessun elemento in questa categoria</div>`}
   </div>`;
 }
 
 function logItemHTML(it){
   let icon, iconBg, iconColor, title, sub, meta='';
   if(it._type==='manutenzioni'){
-    icon=ICONS.wrench; iconBg='var(--accent-dim)'; iconColor='var(--accent)';
+    const iconeCategoria = { olio: ICONS.oliva, gomme: ICONS.gomma, catena: ICONS.catena, tagliando: ICONS.tagliandoIcon };
+    icon=iconeCategoria[it.categoria] || ICONS.wrench; iconBg='var(--accent-dim)'; iconColor='var(--accent)';
     title=categoriaLabel(it.categoria,it.categoriaCustom); sub=`${fmtKm(it.km)}${it.costo?' · '+fmtEuro(it.costo):''}`;
   } else if(it._type==='scadenze'){
     icon=ICONS.calendar; iconBg='var(--warn-dim)'; iconColor='var(--warn)';
