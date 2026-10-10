@@ -303,8 +303,8 @@ function scadenzaBannerHTML(veicolo){
 function tabBarHTML(){
   const tabs = [
     {id:'dashboard', icon:ICONS.dashboard, label:'Dashboard'},
-    {id:'veicoli', icon:ICONS.bike, label:'Veicoli'},
     {id:'log', icon:ICONS.list, label:'Diario'},
+    {id:'veicoli', icon:ICONS.bike, label:'Veicoli'},
     {id:'ai', icon:ICONS.spark, label:'AI'},
     {id:'impostazioni', icon:ICONS.settings, label:'Impostazioni'},
   ];
@@ -1453,7 +1453,7 @@ async function importaJSON(file){
 const app = document.getElementById('app');
 
 /* ---------------- SWIPE TRA TAB ---------------- */
-const TAB_ORDER = ['dashboard','veicoli','log','ai','impostazioni'];
+const TAB_ORDER = ['dashboard','log','veicoli','ai','impostazioni'];
 let touchStartX = 0, touchStartY = 0, touchActive = false;
 
 app.addEventListener('touchstart', (e) => {
