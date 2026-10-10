@@ -1,4 +1,4 @@
-const CACHE = 'motolog-v21';
+const CACHE = 'motolog-v22';
 const SHELL = ['./', './index.html', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -26,13 +26,4 @@ self.addEventListener('fetch', (e) => {
       })
       .catch(() => caches.match(e.request))
   );
-});
-
-self.addEventListener('periodicsync', (e) => {
-  if (e.tag === 'km-reminder') {
-    e.waitUntil(self.registration.showNotification('MyGarage', {
-      body: 'Ricordati di aggiornare i km dei tuoi mezzi',
-      icon: './icon-192.png'
-    }));
-  }
 });

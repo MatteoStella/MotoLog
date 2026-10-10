@@ -758,8 +758,6 @@ function viewAIManuale(v){
 }
 
 function viewImpostazioni(){
-  const notifStatus = ('Notification' in window) ? Notification.permission : 'unsupported';
-  const notifLabel = { granted:'Attive', denied:'Bloccate — riattivale dalle impostazioni del sito nel browser', default:'Non ancora richieste', unsupported:'Non supportate su questo browser' }[notifStatus];
   const hasKey = !!state.settings.geminiApiKey;
   return `<div class="content">
     <div class="section-title">Aspetto</div>
@@ -820,13 +818,6 @@ function viewImpostazioni(){
       <div class="field">
         <label>Segnala scadenze in arrivo entro (giorni)</label>
         <input type="number" min="1" max="90" value="${state.settings.scadenzaReminderDays}" data-action="setScadenzaReminderDays">
-      </div>
-      <div class="card-row" style="margin-top:16px;">
-        <div>
-          <div style="font-size:14px;">Notifiche</div>
-          <div class="muted" style="font-size:12.5px;margin-top:2px;">${notifLabel}</div>
-        </div>
-        ${notifStatus==='default' ? `<button class="btn btn-ghost" style="padding:8px 14px;font-size:13px;" data-action="requestNotifPermission">Attiva</button>` : ''}
       </div>
     </div>
 
@@ -1624,11 +1615,6 @@ app.addEventListener('click', async (e) => {
     render();
     return;
   }
-  if(action==='requestNotifPermission'){
-    try{ await Notification.requestPermission(); } catch(e){}
-    render();
-    return;
-  }
   if(action==='rimuoviGeminiKey'){
     if(confirm("Rimuovere la chiave Gemini salvata? Le funzioni AI smetteranno di funzionare finché non ne aggiungi una nuova.")){
       await saveSetting('geminiApiKey', '');
@@ -1973,9 +1959,6 @@ function setupServiceWorker(){
     await loadVeicoli();
     await loadVeicoloData(state.selectedVeicoloId);
     render();
-    if('Notification' in window && Notification.permission==='default'){
-      setTimeout(()=>Notification.requestPermission().catch(()=>{}), 1500);
-    }
   } catch(e){
     console.error('Errore avvio MyGarage:', e);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text);">
