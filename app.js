@@ -397,8 +397,8 @@ function viewDashboard(){
           <div style="width:20px;height:20px;border-radius:6px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
           <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
         </div>
-        <div class="mono" style="font-size:20px;font-weight:700;">${prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : '—'}</div>
-        <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? 'gg — '+tipoScadenzaLabel(prossimaScadenzaData.tipo) : 'Nessuna scadenza'}</div>
+        <div class="mono" style="font-size:20px;font-weight:700;">${prossimaScadenzaData ? (() => { const g = daysBetween(todayISO(),prossimaScadenzaData.data); return g>30 ? Math.ceil(g/30) : g; })() : '—'}</div>
+        <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? (() => { const g = daysBetween(todayISO(),prossimaScadenzaData.data); return (g>30 ? (Math.ceil(g/30)===1?'mese':'mesi') : 'gg')+' — '+tipoScadenzaLabel(prossimaScadenzaData.tipo); })() : 'Nessuna scadenza'}</div>
       </div>
     </div>
     <div class="card" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
