@@ -347,10 +347,8 @@ function viewDashboard(){
     if(kmTotali > 0 && litriConsumati > 0) consumoKmL = kmTotali / litriConsumati;
   }
 
-  const oggiMeno365 = new Date(); oggiMeno365.setDate(oggiMeno365.getDate()-365);
-  const spesa12Mesi = [...state.cache.manutenzioni, ...state.cache.rifornimenti, ...state.cache.scadenze]
-    .filter(x => new Date(x.data) >= oggiMeno365)
-    .reduce((s,x)=> s+(x.costo||0), 0);
+  const spese12 = speseUltimi12Mesi();
+  const spesa12Mesi = spese12.reduce((t,x)=> t+x.costo, 0);
 
   const prossimaScadenzaData = state.cache.scadenze.find(s=>s.stato==='attiva');
 
@@ -409,7 +407,7 @@ function viewDashboard(){
         <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? (() => { const g = daysBetween(todayISO(),prossimaScadenzaData.data); return (g>30 ? (Math.ceil(g/30)===1?'mese':'mesi') : 'gg')+' — '+tipoScadenzaLabel(prossimaScadenzaData.tipo); })() : 'Nessuna scadenza'}</div>
       </div>
     </div>
-    <div class="card" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+    <div class="card" data-action="openSpese" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
       <div>
         <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Spesa ultimi 12 mesi</div>
         <div class="mono" style="font-size:20px;font-weight:700;margin-top:4px;">${fmtEuro(spesa12Mesi)}</div>
@@ -469,6 +467,37 @@ function viewVeicoli(){
         </div>
       </button>`).join('')}
   </div>`;
+}
+
+function speseUltimi12Mesi(){
+  const limite = new Date(); limite.setDate(limite.getDate()-365);
+  const voci = [
+    ...state.cache.manutenzioni.map(x=>({...x, _type:'manutenzioni', _label: categoriaLabel(x.categoria, x.categoriaCustom)})),
+    ...state.cache.rifornimenti.map(x=>({...x, _type:'rifornimenti', _label: 'Rifornimento'})),
+    ...state.cache.scadenze.map(x=>({...x, _type:'scadenze', _label: tipoScadenzaLabel(x.tipo)})),
+  ];
+  return voci
+    .filter(x => new Date(x.data) >= limite && (x.costo||0) > 0)
+    .map(x => ({...x, costo: x.costo||0}))
+    .sort((a,b)=> new Date(b.data)-new Date(a.data));
+}
+function speseModal(){
+  const voci = speseUltimi12Mesi();
+  const totale = voci.reduce((t,x)=>t+x.costo,0);
+  const nomi = {manutenzioni:'Manutenzione', rifornimenti:'Rifornimento', scadenze:'Scadenza'};
+  return modalWrapper(`
+    <div class="modal-header"><h2>Spesa ultimi 12 mesi</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="mono" style="font-size:24px;font-weight:700;margin-bottom:4px;">${fmtEuro(totale)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">${voci.length} ${voci.length===1?'voce':'voci'}</div>
+    ${voci.length ? `<div class="card">${voci.map(x=>`
+      <div data-action="openEdit" data-type="${x._type}" data-id="${x.id}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;">
+        <div style="min-width:0;">
+          <div style="font-size:14px;font-weight:600;">${escapeHTML(x._label)}</div>
+          <div class="muted" style="font-size:12px;">${fmtDate(x.data)} · ${nomi[x._type]}${x._type==='scadenze' && x.stato!=='completata' ? ' (attiva)' : ''}</div>
+        </div>
+        <div class="mono" style="font-weight:700;white-space:nowrap;">${fmtEuro(x.costo)}</div>
+      </div>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessuna spesa registrata</div>`}
+  `);
 }
 
 function calKmStatoHTML(v){
@@ -1537,6 +1566,7 @@ app.addEventListener('click', async (e) => {
     return;
   }
 
+  if(action==='openSpese'){ state.modal={view:'spese'}; render(); return; }
   if(action==='openTypeChooser'){ state.modal={view:'typeChooser'}; render(); return; }
   if(action==='openForm'){
     if(type==='manutenzioni') await loadEditAttachments(null);
@@ -1897,6 +1927,7 @@ function modalContent(){
   if(view==='problemi') return problemaFormModal(payload);
   if(view==='rifornimenti') return rifornimentoFormModal(payload);
   if(view==='kmUpdate') return kmUpdateModal(payload.id);
+  if(view==='spese') return speseModal();
   return '';
 }
 
