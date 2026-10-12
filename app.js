@@ -471,6 +471,13 @@ function viewVeicoli(){
   </div>`;
 }
 
+function calKmStatoHTML(v){
+  const c = v.calendarKm;
+  if(!c) return '';
+  return c.giorni===state.settings.kmReminderDays
+    ? `<div class="badge badge-ok" style="display:block;text-align:center;margin-top:14px;padding:8px;">✓ Promemoria km già aggiunto a Google Calendar</div>`
+    : `<div class="badge badge-warn" style="display:block;text-align:center;margin-top:14px;padding:8px;">Aggiunto a Calendar ogni ${c.giorni} giorni, ma ora l'intervallo è ${state.settings.kmReminderDays}: aggiungilo di nuovo</div>`;
+}
 function viewVeicoloDetail(v){
   return `<div class="content">
     <div class="card">
@@ -487,7 +494,8 @@ function viewVeicoloDetail(v){
         <div><div class="muted" style="font-size:12px;">Targa</div>${v.targa||'—'}</div>
         <div><div class="muted" style="font-size:12px;">Km attuali</div><span class="mono">${fmtKm(v.kmAttuali)}</span></div>
       </div>
-      <a href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurRule:`RRULE:FREQ=DAILY;INTERVAL=${state.settings.kmReminderDays}`})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:14px;">${ICONS.calendar} Promemoria km ricorrente su Calendar</a>
+      <div id="calKmStato">${calKmStatoHTML(v)}</div>
+      <a data-action="calendarioKmAggiunto" data-id="${v.id}" href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurRule:`RRULE:FREQ=DAILY;INTERVAL=${state.settings.kmReminderDays}`})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:${v.calendarKm?'8':'14'}px;">${ICONS.calendar} ${v.calendarKm?'Aggiungi di nuovo':'Aggiungi'} promemoria km ricorrente su Calendar</a>
     </div>
 
     <div class="section-title">Manuale (per l'AI)</div>
@@ -1583,6 +1591,16 @@ app.addEventListener('click', async (e) => {
     await esportaReportPDF(id);
     return;
   }
+  if(action==='calendarioKmAggiunto'){
+    const v = state.veicoli.find(x=>x.id===id);
+    if(!v) return;
+    v.calendarKm = { giorni: state.settings.kmReminderDays };
+    await dbPut('veicoli', v);
+    const box = document.getElementById('calKmStato');
+    if(box) box.innerHTML = calKmStatoHTML(v);
+    el.lastChild.textContent = ' Aggiungi di nuovo promemoria km ricorrente su Calendar';
+    return;
+  }
   if(action==='calendarioAggiunto'){
     const s = state.cache.scadenze.find(x=>x.id===id);
     if(!s) return;
@@ -1761,7 +1779,9 @@ app.addEventListener('submit', async (e) => {
   if(form.id==='veicoloForm'){
     const btn = form.querySelector('[data-action="saveVeicolo"]');
     const existingId = btn.dataset.id;
+    const prev = existingId ? state.veicoli.find(x=>x.id===existingId) : null;
     const obj = {
+      ...(prev||{}),
       id: existingId || uid(),
       tipo: fd.get('tipo'), marca: fd.get('marca'), modello: fd.get('modello'),
       anno: parseInt(fd.get('anno')), targa: fd.get('targa'),
