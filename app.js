@@ -53,6 +53,14 @@ const todayISO = () => new Date().toISOString().slice(0,10);
 const addMonths = (dateStr, months) => { const d = new Date(dateStr); d.setMonth(d.getMonth()+months); return d.toISOString().slice(0,10); };
 const addDays = (dateStr, days) => { const d = new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
 
+function calStatoHTML(s){
+  const c = s.calendarAggiunto;
+  if(!c) return '';
+  const aggiornato = c.data===s.data && c.ricorrenza===(s.ricorrenza||'nessuna');
+  return aggiornato
+    ? `<div class="badge badge-ok" style="display:block;text-align:center;margin-top:14px;padding:8px;">✓ Già aggiunto a Google Calendar</div>`
+    : `<div class="badge badge-warn" style="display:block;text-align:center;margin-top:14px;padding:8px;">Aggiunto a Calendar, ma data o ricorrenza sono cambiate: aggiungilo di nuovo</div>`;
+}
 function googleCalendarLink({ title, dateISO, details='', recurRule=null }){
   const start = dateISO.replace(/-/g,'');
   const endDate = new Date(dateISO); endDate.setDate(endDate.getDate()+1);
@@ -973,7 +981,7 @@ function scadenzaFormModal(payload){
         </select>
       </div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${s?.costo??''}" placeholder="Facoltativo"></div>
-      ${s ? `<a href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:14px;">${ICONS.calendar} Aggiungi a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
+      ${s ? `<div id="calStato">${calStatoHTML(s)}</div><a data-action="calendarioAggiunto" data-id="${s.id}" href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:${s.calendarAggiunto?'8':'14'}px;">${ICONS.calendar} ${s.calendarAggiunto?'Aggiungi di nuovo':'Aggiungi'} a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
       ${s && s.stato!=='completata' ? `<button type="button" class="btn btn-ghost btn-block" style="margin-top:14px;" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
         ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
@@ -1575,6 +1583,16 @@ app.addEventListener('click', async (e) => {
     await esportaReportPDF(id);
     return;
   }
+  if(action==='calendarioAggiunto'){
+    const s = state.cache.scadenze.find(x=>x.id===id);
+    if(!s) return;
+    s.calendarAggiunto = { data: s.data, ricorrenza: s.ricorrenza||'nessuna' };
+    await dbPut('scadenze', s);
+    const box = document.getElementById('calStato');
+    if(box) box.innerHTML = calStatoHTML(s);
+    el.lastChild.textContent = ' Aggiungi di nuovo a Google Calendar' + (s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : '');
+    return;
+  }
   if(action==='completaScadenza'){
     const s = state.cache.scadenze.find(x=>x.id===id);
     if(!s) return;
@@ -1586,7 +1604,8 @@ app.addEventListener('click', async (e) => {
       await dbPut('scadenze', {
         id: uid(), veicoloId: s.veicoloId, tipo: s.tipo, data: addMonths(s.data, mesi),
         ricorrenza: s.ricorrenza, ricorrenzaMesi: s.ricorrenzaMesi||null,
-        origine: 'rinnovo-auto', stato: 'attiva'
+        origine: 'rinnovo-auto', stato: 'attiva',
+        calendarAggiunto: s.calendarAggiunto ? { data: addMonths(s.data, mesi), ricorrenza: s.ricorrenza } : null
       });
       rinnovata = true;
     }
@@ -1818,6 +1837,7 @@ app.addEventListener('submit', async (e) => {
         costo: fd.get('costo') ? parseFloat(fd.get('costo')) : null,
         origine: existing?.origine || 'manuale',
         stato: existing?.stato || 'attiva',
+        calendarAggiunto: existing?.calendarAggiunto || null,
       };
       await dbPut('scadenze', obj);
       showSuccessToast("Scadenza salvata");
