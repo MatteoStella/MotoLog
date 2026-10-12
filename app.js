@@ -477,7 +477,7 @@ function speseUltimi12Mesi(){
     ...state.cache.scadenze.map(x=>({...x, _type:'scadenze', _label: tipoScadenzaLabel(x.tipo)})),
   ];
   return voci
-    .filter(x => new Date(x.data) >= limite && (x.costo||0) > 0)
+    .filter(x => new Date(x.data) >= limite && x.data <= todayISO() && (x.costo||0) > 0)
     .map(x => ({...x, costo: x.costo||0}))
     .sort((a,b)=> new Date(b.data)-new Date(a.data));
 }
