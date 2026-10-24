@@ -234,7 +234,7 @@ async function loadEditAttachments(manutenzione){
 
 /* ---------------- LOGICA SCADENZE / PROIEZIONE KM ---------------- */
 function nextScadenzaKm(veicolo){
-  const items = state.cache.manutenzioni.filter(m => m.veicoloId===veicolo.id && m.prossimaScadenzaKm);
+  const items = state.cache.manutenzioni.filter(m => m.veicoloId===veicolo.id && m.prossimaScadenzaKm && m.prossimaScadenzaKm > veicolo.kmAttuali);
   if(!items.length) return null;
   items.sort((a,b)=> a.prossimaScadenzaKm - b.prossimaScadenzaKm);
   return items[0];
