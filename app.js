@@ -1930,7 +1930,7 @@ function headerHTML(){
     return `<div class="topbar">
       <button class="icon-btn" data-action="setTab" data-id="veicoli" aria-label="Torna ai veicoli">${ICONS.back}</button>
       <h1>${v?escapeHTML(v.marca)+' '+escapeHTML(v.modello):''}</h1>
-      <div style="width:38px;"></div>
+      <div style="width:44px;"></div>
     </div>`;
   }
   if(state.tab==='calendario'){
@@ -1952,7 +1952,7 @@ function vehicleSwitcherHTML(){
   if(!['dashboard','log','ai','calendario'].includes(state.tab) || state.veicoli.length<1) return '';
   if(state.veicoli.length===0) return '';
   return `<div class="veh-switcher">
-    ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?'🏍':'🚗'} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
+    ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?ICONS.bike:ICONS.car} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
   </div>`;
 }
 
