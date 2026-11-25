@@ -696,7 +696,8 @@ function viewCalendario(){
     </button>`;
   }
 
-  return `<div class="content">
+  return `<div class="content cal">
+    <div class="card">
     <div class="cal-nav">
       <button class="icon-btn" data-action="calPrevMonth" aria-label="Mese precedente"><span style="display:inline-flex;transform:rotate(180deg);">${ICONS.chevron}</span></button>
       <div class="cal-month-label">${monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)}</div>
@@ -710,8 +711,9 @@ function viewCalendario(){
       <span><span class="cal-dot" style="background:var(--danger)"></span>Problemi</span>
       <span><span class="cal-dot" style="background:var(--ok)"></span>Rifornimenti</span>
     </div>
-    <div class="section-title">${selected ? fmtDate(selected) : 'Eventi del mese'}</div>
-    ${dayItems.length ? `<div class="card">${dayItems.map(it=>logItemHTML(it)).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento${selected?' in questo giorno':' in questo mese'}</div>`}
+    </div>
+    <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.calendar}</div><h3>${selected ? fmtDate(selected) : 'Eventi del mese'}</h3></div>
+    ${dayItems.length ? `<div class="card events-card">${dayItems.map(it=>logItemHTML(it)).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessun evento${selected?' in questo giorno':' in questo mese'}</div>`}
   </div>`;
 }
 
@@ -721,16 +723,16 @@ function viewAI(){
   }
   const v = currentVeicolo();
   if(!state.settings.geminiApiKey){
-    return `<div class="content">
+    return `<div class="content ai">
       <div class="card" style="text-align:center;padding:30px 20px;">
-        ${ICONS.spark}
+        <div class="sec-ico" style="margin:0 auto;width:52px;height:52px;border-radius:16px;">${ICONS.spark}</div>
         <h3 style="margin:12px 0 6px;">Configura l'assistente AI</h3>
         <p class="muted" style="font-size:13.5px;margin:0 0 18px;">Serve una chiave Gemini gratuita (2 minuti, nessuna carta) per usare chat, analisi manuale e lettura foto.</p>
         <button class="btn btn-primary" data-action="setTab" data-id="impostazioni">Vai in Impostazioni</button>
       </div>
     </div>`;
   }
-  return `<div class="content">
+  return `<div class="content ai">
     <div class="sub-tabs">
       <button class="sub-tab ${state.aiSubtab==='chat'?'active':''}" data-action="setAiSubtab" data-id="chat">Assistente</button>
       <button class="sub-tab ${state.aiSubtab==='manuale'?'active':''}" data-action="setAiSubtab" data-id="manuale">Manuale</button>
@@ -742,7 +744,7 @@ function viewAI(){
 function viewAIChat(v){
   return `
     <div class="chat-scroll">
-      ${state.chatHistory.length===0 ? `<div class="muted" style="text-align:center;padding:30px 10px;font-size:13.5px;">Chiedimi consigli su rumori strani, spie accese, o problemi ricorrenti su ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}. Uso lo storico problemi come contesto.</div>` : ''}
+      ${state.chatHistory.length===0 ? `<div class="muted" style="text-align:center;padding:30px 10px;font-size:13.5px;"><div class="sec-ico" style="margin:0 auto 12px;">${ICONS.spark}</div>Chiedimi consigli su rumori strani, spie accese, o problemi ricorrenti su ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}. Uso lo storico problemi come contesto.</div>` : ''}
       ${state.chatHistory.map(m=>`<div class="msg ${m.role==='user'?'msg-user':'msg-ai'}">${escapeHTML(m.content)}</div>`).join('')}
       ${state.busy ? `<div class="msg msg-ai" style="display:flex;align-items:center;gap:8px;"><div class="spinner"></div>${state.busyStatus ? `<span style="font-size:13px;">${escapeHTML(state.busyStatus)}</span>` : ''}</div>` : ''}
     </div>
@@ -757,9 +759,11 @@ function viewAIChat(v){
 function viewAIManuale(v){
   return `
     <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.file}</div><h3>Manuale del veicolo</h3></div>
       ${state.cache.manuale ? `
-        <div class="card-row" style="margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHTML(state.cache.manuale.nome)}</span></div>
+        <div class="tile" style="margin-bottom:14px;">
+          <div class="tile-lbl">File caricato</div>
+          <div class="tile-sub" style="color:var(--text);">${escapeHTML(state.cache.manuale.nome)}</div>
         </div>
         <button class="btn btn-primary btn-block" data-action="analizzaManuale" ${state.busy?'disabled':''}>
           ${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Analisi in corso...')}` : 'Analizza e proponi scadenze'}
@@ -772,14 +776,14 @@ function viewAIManuale(v){
         </div>` : ''}
         <div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px;">Richiede connessione internet</div>
       ` : `
-        <label class="btn btn-ghost btn-block" style="cursor:pointer;">
+        <label class="btn-soft" style="cursor:pointer;">
           ${ICONS.upload} Carica PDF manuale del veicolo
           <input type="file" accept="application/pdf" style="display:none;" data-action="uploadManuale" data-id="${v.id}">
         </label>
       `}
     </div>
     ${state.proposte && state.proposte.length ? `
-      <div class="section-title">Proposte scadenze</div>
+      <div class="sec-head" style="margin-top:24px;"><div class="sec-ico" style="background:var(--warn-dim);color:var(--warn);">${ICONS.calendar}</div><h3>Proposte scadenze</h3></div>
       <div class="card">
         ${state.proposte.map((p,i)=>`
           <div class="proposal-item">
