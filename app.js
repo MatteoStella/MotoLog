@@ -444,20 +444,16 @@ function viewVeicoli(){
   }
   return `<div class="content">
     ${state.veicoli.map(v=>`
-      <button class="card card-tap" data-action="openVeicoloDetail" data-id="${v.id}" style="margin-bottom:10px;">
-        <div class="card-row">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div class="log-dot" style="background:var(--accent-dim);color:var(--accent);width:42px;height:42px;">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
-            <div>
-              <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
-                ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}
-                ${v.preferito ? `<span style="color:var(--warn);display:inline-flex;">${(() => { const s = ICONS.star; return s.replace('class="icon"','class="icon" fill="currentColor" style="width:14px;height:14px;"'); })()}</span>` : ''}
-              </div>
-              <div class="muted mono" style="font-size:13px;">${fmtKm(v.kmAttuali)} · ${v.anno}</div>
-            </div>
+      <button class="card card-tap veh-row" data-action="openVeicoloDetail" data-id="${v.id}" style="margin-bottom:10px;">
+        <div class="veh-logo">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
+        <div class="grow">
+          <div class="veh-name" style="font-size:17px;display:flex;align-items:center;gap:6px;">
+            <span>${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</span>
+            ${v.preferito ? `<span style="color:var(--warn);display:inline-flex;">${(() => { const s = ICONS.star; return s.replace('class="icon"','class="icon" fill="currentColor" style="width:14px;height:14px;"'); })()}</span>` : ''}
           </div>
-          ${ICONS.chevron}
+          <div class="muted mono" style="font-size:13px;margin-top:4px;">${fmtKm(v.kmAttuali)} · ${v.anno}</div>
         </div>
+        <div class="chev">${ICONS.chevron}</div>
       </button>`).join('')}
   </div>`;
 }
@@ -501,46 +497,50 @@ function calKmStatoHTML(v){
     : `<div class="badge badge-warn" style="display:block;text-align:center;margin-top:14px;padding:8px;">Aggiunto a Calendar ogni ${c.giorni} giorni, ma ora l'intervallo è ${state.settings.kmReminderDays}: aggiungilo di nuovo</div>`;
 }
 function viewVeicoloDetail(v){
-  return `<div class="content">
+  const tile = (icon,bg,col,lbl,val) => `<div class="tile"><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div></div>`;
+  const nProblemi = state.cache.problemi.filter(p=>p.stato==='aperto').length;
+  return `<div class="content veh-detail">
     <div class="card">
-      <div class="card-row" style="margin-bottom:14px;">
-        <h2>${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</h2>
-        <div style="display:flex;gap:8px;">
+      <div class="veh-head" style="justify-content:space-between;">
+        <div class="veh-name grow" style="min-width:0;overflow-wrap:anywhere;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
           <button class="icon-btn" data-action="setPreferito" data-id="${v.id}" style="${v.preferito?'color:var(--warn);':''}" title="Veicolo principale">${(() => { const s = ICONS.star; return v.preferito ? s.replace('class="icon"','class="icon" fill="currentColor"') : s; })()}</button>
           <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}">${ICONS.wrench}</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px;">
-        <div><div class="muted" style="font-size:12px;">Tipo</div>${v.tipo==='moto'?'Moto':'Auto'}</div>
-        <div><div class="muted" style="font-size:12px;">Anno</div>${v.anno}</div>
-        <div><div class="muted" style="font-size:12px;">Targa</div>${v.targa||'—'}</div>
-        <div><div class="muted" style="font-size:12px;">Km attuali</div><span class="mono">${fmtKm(v.kmAttuali)}</span></div>
+      <div class="tile-grid">
+        ${tile(v.tipo==='moto'?ICONS.bike:ICONS.car,'var(--accent-dim)','var(--accent)','Tipo',v.tipo==='moto'?'Moto':'Auto')}
+        ${tile(ICONS.calendar,'var(--surface)','var(--text-muted)','Anno',v.anno)}
+        ${tile(ICONS.file,'var(--surface)','var(--text-muted)','Targa',v.targa||'—')}
+        ${tile(ICONS.dashboard,'var(--accent-dim)','var(--accent)','Km attuali',fmtKm(v.kmAttuali))}
       </div>
       <div id="calKmStato">${calKmStatoHTML(v)}</div>
-      <a data-action="calendarioKmAggiunto" data-id="${v.id}" href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurRule:`RRULE:FREQ=DAILY;INTERVAL=${state.settings.kmReminderDays}`})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:${v.calendarKm?'8':'14'}px;">${ICONS.calendar} ${v.calendarKm?'Aggiungi di nuovo':'Aggiungi'} promemoria km ricorrente su Calendar</a>
+      <a data-action="calendarioKmAggiunto" data-id="${v.id}" href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurRule:`RRULE:FREQ=DAILY;INTERVAL=${state.settings.kmReminderDays}`})}" target="_blank" rel="noopener" class="btn-soft" style="margin-top:${v.calendarKm?'8':'14'}px;">${ICONS.calendar} <span>${v.calendarKm?'Aggiungi di nuovo':'Aggiungi'} promemoria km ricorrente su Calendar</span></a>
     </div>
 
-    <div class="section-title">Manuale (per l'AI)</div>
+    <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.file}</div><h3>Manuale (per l'AI)</h3></div>
     <div class="card">
       ${state.cache.manuale ? `
         <div class="card-row">
-          <div style="display:flex;align-items:center;gap:10px;">${ICONS.file}<span>${escapeHTML(state.cache.manuale.nome)}</span></div>
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="sec-ico" style="background:var(--surface-2);color:var(--text-muted);">${ICONS.file}</div><span style="min-width:0;overflow-wrap:anywhere;">${escapeHTML(state.cache.manuale.nome)}</span></div>
           <button class="icon-btn" data-action="deleteManuale" data-id="${state.cache.manuale.id}">${ICONS.trash}</button>
         </div>` : `
         <label style="margin:0 0 8px;">Nessun manuale caricato</label>
-        <label class="btn btn-ghost btn-block" style="cursor:pointer;">
+        <label class="btn-soft" style="cursor:pointer;">
           ${ICONS.upload} Carica PDF manuale
           <input type="file" accept="application/pdf" style="display:none;" data-action="uploadManuale" data-id="${v.id}">
         </label>`}
     </div>
 
-    <div class="section-title">Statistiche</div>
-    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:center;">
-      <div><div class="mono" style="font-size:18px;font-weight:600;">${fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0))}</div><div class="muted" style="font-size:12px;">Spesa manutenzioni</div></div>
-      <div><div class="mono" style="font-size:18px;font-weight:600;">${state.cache.problemi.filter(p=>p.stato==='aperto').length}</div><div class="muted" style="font-size:12px;">Problemi aperti</div></div>
+    <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.dashboard}</div><h3>Statistiche</h3></div>
+    <div class="card">
+      <div class="tile-grid">
+        ${tile('<span style="font-weight:700;font-size:13px;">€</span>','var(--ok-dim)','var(--ok)','Spesa manutenzioni',fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0)))}
+        ${tile(ICONS.alert,nProblemi>0?'var(--danger-dim)':'var(--ok-dim)',nProblemi>0?'var(--danger)':'var(--ok)','Problemi aperti',nProblemi)}
+      </div>
     </div>
 
-    <button class="btn btn-ghost btn-block" style="margin-top:20px;" data-action="exportReportPDF" data-id="${v.id}" ${state.busy?'disabled':''}>
+    <button class="btn-soft" style="margin-top:20px;" data-action="exportReportPDF" data-id="${v.id}" ${state.busy?'disabled':''}>
       ${state.busy ? '<div class="spinner"></div> Generazione...' : ICONS.file + ' Esporta report PDF'}
     </button>
     <button class="btn btn-danger btn-block" style="margin-top:10px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
