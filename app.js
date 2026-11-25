@@ -28,8 +28,8 @@ function geminiURL(model){ return `https://generativelanguage.googleapis.com/v1b
 const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
-  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
-  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)' },
+  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)', info:'#22C7E6', 'info-dim':'rgba(34,199,230,.16)' },
+  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)', info:'#0E8FA8', 'info-dim':'rgba(14,143,168,.12)' },
 };
 const ACCENT_TOKENS = {
   blu:     { accent:'#2F80FF', 'accent-dim':'rgba(47,128,255,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'47,128,255',  label:'Blu elettrico' },
@@ -375,9 +375,9 @@ function viewDashboard(){
         const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
         const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossimaScadenzaData.tipo);
         return `<div class="tile-grid">
-          ${tile(ICONS.dashboard,'var(--accent-dim)','var(--accent)','Km attuali',fmtKm(v.kmAttuali))}
-          ${v.anno ? tile(ICONS.calendar,'var(--surface)','var(--text-muted)','Anno',escapeHTML(String(v.anno))) : ''}
-          ${tile(ICONS.gas,'var(--accent-dim)','var(--accent)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti')}
+          ${tile(ICONS.dashboard,'var(--info-dim)','var(--info)','Km attuali',fmtKm(v.kmAttuali))}
+          ${v.anno ? tile(ICONS.calendar,'var(--accent-dim)','var(--accent)','Anno',escapeHTML(String(v.anno))) : ''}
+          ${tile(ICONS.gas,'var(--ok-dim)','var(--ok)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti')}
           ${tile(ICONS.calendar,'var(--warn-dim)','var(--warn)','Scadenza',scadVal,scadSub)}
         </div>`;
       })()}
@@ -1947,7 +1947,7 @@ function headerHTML(){
   const titles = {dashboard:'MyGarage', veicoli:'I tuoi veicoli', log:'Diario', ai:'Assistente AI', impostazioni:'Impostazioni'};
   return `<div class="topbar">
     <h1>${titles[state.tab]||'MyGarage'}</h1>
-    ${state.tab==='dashboard' ? `<button class="icon-btn" data-action="openCalendario" aria-label="Apri calendario eventi">${ICONS.calendar}</button>` : ''}
+    ${state.tab==='dashboard' ? `<button class="icon-btn" style="background:var(--accent-dim);border-color:transparent;color:var(--accent);" data-action="openCalendario" aria-label="Apri calendario eventi">${ICONS.calendar}</button>` : ''}
   </div>`;
 }
 
