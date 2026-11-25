@@ -370,10 +370,10 @@ function viewDashboard(){
         </div>
       </div>
       ${(() => {
-        const tile = (icon,bg,col,lbl,val,sub) => `<div class="tile"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-txt"><div class="tile-lbl">${lbl}</div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div></div>`;
+        const tile = (icon,bg,col,lbl,val,sub) => `<div class="tile"><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
         const gScad = prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : null;
-        const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30) : gScad);
-        const scadSub = gScad===null ? 'Nessuna scadenza' : (gScad>30 ? (Math.ceil(gScad/30)===1?'mese':'mesi') : 'gg')+' — '+tipoScadenzaLabel(prossimaScadenzaData.tipo);
+        const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
+        const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossimaScadenzaData.tipo);
         return `<div class="tile-grid">
           ${tile(ICONS.dashboard,'var(--accent-dim)','var(--accent)','Km attuali',fmtKm(v.kmAttuali))}
           ${v.anno ? tile(ICONS.calendar,'var(--surface)','var(--text-muted)','Anno',escapeHTML(String(v.anno))) : ''}
