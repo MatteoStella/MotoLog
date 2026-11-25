@@ -61,7 +61,7 @@
   .icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
 
   /* Header */
-  .topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:18px 18px 8px;display:flex;align-items:center;justify-content:space-between;}
+  .topbar{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,var(--bg) 60%,transparent);padding:18px 18px 8px;display:flex;align-items:center;justify-content:space-between;}
   .topbar h1{font-size:20px;}
   .topbar .actions{display:flex;gap:10px;}
   .icon-btn{width:44px;height:44px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
@@ -71,7 +71,6 @@
   .veh-switcher::-webkit-scrollbar{display:none;}
   .veh-chip{scroll-snap-align:start;flex-shrink:0;min-height:44px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 16px;font-size:14px;font-weight:500;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:6px;}
   .veh-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:600;}
-  .veh-chip .icon{width:16px;height:16px;}
 
   .content{padding:0 16px 24px;}
   .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:24px 0 12px;display:flex;align-items:center;gap:8px;}
@@ -135,7 +134,7 @@
   .badge-danger{background:var(--danger-dim);color:var(--danger);}
 
   /* Tab bar */
-  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);display:flex;justify-content:space-around;gap:4px;padding:8px 8px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(var(--bg-rgb),.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;gap:4px;padding:8px 8px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
   .tab-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-width:0;min-height:52px;gap:3px;color:var(--text-muted);font-size:11px;font-weight:500;padding:6px 2px;border-radius:14px;}
   .tab-item.active{background:var(--accent-dim);color:var(--accent);}
   .fab{position:fixed;right:calc(50% - 260px + 18px);bottom:calc(84px + var(--safe-bottom));width:56px;height:56px;border-radius:18px;background:var(--accent);color:var(--on-accent);border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;z-index:11;}

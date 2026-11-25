@@ -1952,7 +1952,7 @@ function vehicleSwitcherHTML(){
   if(!['dashboard','log','ai','calendario'].includes(state.tab) || state.veicoli.length<1) return '';
   if(state.veicoli.length===0) return '';
   return `<div class="veh-switcher">
-    ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?ICONS.bike:ICONS.car} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
+    ${state.veicoli.map(v=>`<button class="veh-chip ${v.id===state.selectedVeicoloId?'active':''}" data-action="selectVeicolo" data-id="${v.id}">${v.tipo==='moto'?'🏍':'🚗'} ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</button>`).join('')}
   </div>`;
 }
 
