@@ -599,7 +599,7 @@ function viewLog(){
     else last.items.push(it);
   }
 
-  return `<div class="content">
+  return `<div class="content diario">
     <div class="chip-row">
       ${filters.map(f=>`<button class="chip ${state.logFilter===f.id?'active':''}" data-action="setLogFilter" data-id="${f.id}">${f.label}</button>`).join('')}
     </div>
