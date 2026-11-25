@@ -797,9 +797,9 @@ function viewAIManuale(v){
 
 function viewImpostazioni(){
   const hasKey = !!state.settings.geminiApiKey;
-  return `<div class="content">
-    <div class="section-title">Aspetto</div>
+  return `<div class="content settings">
     <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.edit}</div><h3>Aspetto</h3></div>
       <div class="field" style="margin-top:0;">
         <label>Modalità</label>
         <div class="sub-tabs" style="margin-bottom:0;">
@@ -811,19 +811,19 @@ function viewImpostazioni(){
         <label>Colore d'accento</label>
         <div style="display:flex;gap:12px;margin-top:4px;">
           ${Object.entries(ACCENT_TOKENS).map(([key,t])=>`
-            <button type="button" data-action="setThemeAccent" data-value="${key}" title="${t.label}" style="width:40px;height:40px;border-radius:50%;background:${t.accent};border:3px solid ${state.settings.themeAccent===key?'var(--text)':'transparent'};box-shadow:0 0 0 1px var(--border);"></button>
+            <button type="button" data-action="setThemeAccent" data-value="${key}" title="${t.label}" style="width:44px;height:44px;border-radius:50%;background:${t.accent};border:3px solid ${state.settings.themeAccent===key?'var(--text)':'transparent'};outline:1px solid var(--border);"></button>
           `).join('')}
         </div>
         <div class="muted" style="font-size:12px;margin-top:8px;">${ACCENT_TOKENS[state.settings.themeAccent]?.label||''}</div>
       </div>
     </div>
 
-    <div class="section-title">Assistente AI</div>
     <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.spark}</div><h3>Assistente AI</h3></div>
       ${hasKey ? `
         <div class="card-row">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div class="log-dot" style="background:var(--ok-dim);color:var(--ok);width:34px;height:34px;">${ICONS.check}</div>
+            <div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);">${ICONS.check}</div>
             <div>
               <div style="font-size:14px;">Chiave Gemini configurata</div>
               <div class="muted mono" style="font-size:12px;margin-top:2px;">${state.settings.geminiApiKey.slice(0,6)}••••••••</div>
@@ -834,10 +834,10 @@ function viewImpostazioni(){
       ` : `
         <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Le funzioni AI (chat, analisi manuale, lettura foto) usano Google Gemini con una chiave gratuita tua — nessun costo, nessuna carta richiesta.</p>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
-          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">1</div><div style="font-size:13.5px;">Vai su <b>aistudio.google.com</b> e accedi con un account Google</div></div>
-          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">2</div><div style="font-size:13.5px;">Nella barra laterale tocca <b>"Get API key"</b> → <b>"Create API key"</b></div></div>
-          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">3</div><div style="font-size:13.5px;">Copia la chiave generata (inizia con <b>AIza...</b>)</div></div>
-          <div style="display:flex;gap:10px;"><div class="mono" style="color:var(--accent);font-weight:600;flex-shrink:0;">4</div><div style="font-size:13.5px;">Incollala qui sotto e salva</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div class="mono step-n">1</div><div style="font-size:13.5px;">Vai su <b>aistudio.google.com</b> e accedi con un account Google</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div class="mono step-n">2</div><div style="font-size:13.5px;">Nella barra laterale tocca <b>"Get API key"</b> → <b>"Create API key"</b></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div class="mono step-n">3</div><div style="font-size:13.5px;">Copia la chiave generata (inizia con <b>AIza...</b>)</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div class="mono step-n">4</div><div style="font-size:13.5px;">Incollala qui sotto e salva</div></div>
         </div>
         <form id="geminiKeyForm">
           <input type="password" name="geminiApiKey" placeholder="AIzaSy..." autocomplete="off" required>
@@ -847,8 +847,8 @@ function viewImpostazioni(){
       <div class="muted" style="font-size:11.5px;margin-top:14px;line-height:1.5;">La chiave resta salvata solo su questo dispositivo (nel database locale dell'app) e viene inviata solo a Google, direttamente dal tuo telefono.</div>
     </div>
 
-    <div class="section-title">Promemoria</div>
     <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.calendar}</div><h3>Promemoria</h3></div>
       <div class="field" style="margin-top:0;">
         <label>Sollecita aggiornamento km dopo (giorni)</label>
         <input type="number" min="1" max="60" value="${state.settings.kmReminderDays}" data-action="setKmReminderDays">
@@ -859,8 +859,8 @@ function viewImpostazioni(){
       </div>
     </div>
 
-    <div class="section-title">Backup dati</div>
     <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.file}</div><h3>Backup dati</h3></div>
       <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Esporta tutti i dati in un unico file JSON, o ripristina da un backup precedente.</p>
       ${state.veicoli.length > 1 ? `
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Veicoli da includere</div>
@@ -878,18 +878,18 @@ function viewImpostazioni(){
         </div>
         <button class="checkbox ${state.settings.includiAllegatiBackup?'checked':''}" data-action="toggleIncludiAllegati">${state.settings.includiAllegatiBackup?ICONS.check:''}</button>
       </div>
-      <button class="btn btn-ghost btn-block" data-action="exportBackup" style="margin-bottom:10px;">${ICONS.upload} Esporta backup</button>
-      <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.file} Importa backup<input type="file" accept="application/json" id="importInput" style="display:none;"></label>
+      <button class="btn-soft" data-action="exportBackup" style="margin-bottom:10px;">${ICONS.upload} Esporta backup</button>
+      <label class="btn-soft" style="cursor:pointer;">${ICONS.file} Importa backup<input type="file" accept="application/json" id="importInput" style="display:none;"></label>
     </div>
 
-    <div class="section-title">Zona pericolosa</div>
     <div class="card">
+      <div class="sec-head"><div class="sec-ico" style="background:var(--danger-dim);color:var(--danger);">${ICONS.alert}</div><h3>Zona pericolosa</h3></div>
       <button class="btn btn-danger btn-block" data-action="cancellaTuttiDati">${ICONS.trash} Cancella tutti i dati</button>
     </div>
 
-    <div class="section-title">App</div>
-    <div class="card muted" style="font-size:12.5px;line-height:1.5;">
-      MyGarage v1 — i dati restano sul dispositivo, nessun account richiesto. Le funzioni AI usano la tua chiave Gemini personale e richiedono connessione internet.
+    <div class="card">
+      <div class="sec-head"><div class="sec-ico">${ICONS.settings}</div><h3>App</h3></div>
+      <div class="muted" style="font-size:12.5px;line-height:1.5;">MyGarage v1 — i dati restano sul dispositivo, nessun account richiesto. Le funzioni AI usano la tua chiave Gemini personale e richiedono connessione internet.</div>
     </div>
   </div>`;
 }
