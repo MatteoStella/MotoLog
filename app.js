@@ -979,7 +979,7 @@ function manutenzioneFormModal(payload){
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${m?.costo??''}"></div>
       <div class="field"><label>Prossima scadenza — km</label><input name="prossimaScadenzaKm" type="number" value="${m?.prossimaScadenzaKm??''}"></div>
       <div class="field"><label>Foto e documenti</label>
-        <label class="btn btn-ghost btn-block" style="cursor:pointer;">${ICONS.camera} Aggiungi foto<input type="file" accept="image/*" multiple style="display:none;" data-action="addAttachments"></label>
+        <label class="btn-soft" style="cursor:pointer;">${ICONS.camera} Aggiungi foto<input type="file" accept="image/*" multiple style="display:none;" data-action="addAttachments"></label>
         <div class="attach-row" id="attachPreview">${attachThumbsHTML()}</div>
       </div>
       <div class="actions-footer">
@@ -995,7 +995,7 @@ function scadenzaFormModal(payload){
   return modalWrapper(`
     <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--warn-dim);color:var(--warn);">${ICONS.calendar}</div><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     ${s?.stato==='completata' ? `<div class="badge badge-ok" style="margin-bottom:14px;display:inline-block;">✓ Completata</div>` : ''}
-    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Scansiona documento (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
+    ${state.settings.geminiApiKey ? `<label class="btn-soft" style="cursor:pointer;margin-bottom:12px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Scansiona documento (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
     <form id="entryForm">
       <div class="field"><label>Tipo</label>
         <select name="tipo">
@@ -1011,8 +1011,8 @@ function scadenzaFormModal(payload){
         </select>
       </div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${s?.costo??''}" placeholder="Facoltativo"></div>
-      ${s ? `<div id="calStato">${calStatoHTML(s)}</div><a data-action="calendarioAggiunto" data-id="${s.id}" href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn btn-ghost btn-block" style="margin-top:${s.calendarAggiunto?'8':'14'}px;">${ICONS.calendar} ${s.calendarAggiunto?'Aggiungi di nuovo':'Aggiungi'} a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
-      ${s && s.stato!=='completata' ? `<button type="button" class="btn btn-ghost btn-block" style="margin-top:14px;" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
+      ${s ? `<div id="calStato">${calStatoHTML(s)}</div><a data-action="calendarioAggiunto" data-id="${s.id}" href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn-soft" style="margin-top:${s.calendarAggiunto?'8':'14'}px;">${ICONS.calendar} ${s.calendarAggiunto?'Aggiungi di nuovo':'Aggiungi'} a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
+      ${s && s.stato!=='completata' ? `<button type="button" class="btn-soft" style="margin-top:14px;background:var(--ok-dim);color:var(--ok);" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
         ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveScadenza" data-id="${s?.id||''}">Salva</button>
@@ -1997,8 +1997,8 @@ function render(){
     ${state.modal ? modalContent() : ''}
     ${state.toast ? `<div class="toast">${state.toast.success ? `<span class="check-badge">${ICONS.check}</span>` : ''}${escapeHTML(state.toast.text)}</div>` : ''}
     ${state.lightbox ? `<div class="modal-overlay" style="align-items:center;justify-content:center;" data-action="closeLightboxBg">
-      <img src="${state.lightbox.url}" alt="${escapeHTML(state.lightbox.nome||'')}" style="max-width:92%;max-height:82vh;border-radius:8px;object-fit:contain;">
-      <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.25);" data-action="closeLightbox">${ICONS.close}</button>
+      <img src="${state.lightbox.url}" alt="${escapeHTML(state.lightbox.nome||'')}" style="max-width:92%;max-height:82vh;border-radius:16px;object-fit:contain;">
+      <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(5,9,18,.72);color:var(--text);border-color:var(--border);" data-action="closeLightbox">${ICONS.close}</button>
     </div>` : ''}
   `;
 
