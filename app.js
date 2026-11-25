@@ -475,7 +475,7 @@ function speseModal(){
   const totale = voci.reduce((t,x)=>t+x.costo,0);
   const nomi = {manutenzioni:'Manutenzione', rifornimenti:'Rifornimento', scadenze:'Scadenza'};
   return modalWrapper(`
-    <div class="modal-header"><h2>Spesa ultimi 12 mesi</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);"><span style="font-weight:700;font-size:18px;">€</span></div><h2>Spesa ultimi 12 mesi</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <div class="mono" style="font-size:24px;font-weight:700;margin-bottom:4px;">${fmtEuro(totale)}</div>
     <div class="muted" style="font-size:12px;margin-bottom:14px;">${voci.length} ${voci.length===1?'voce':'voci'}</div>
     ${voci.length ? `<div class="card">${voci.map(x=>`
@@ -903,15 +903,15 @@ function modalWrapper(inner){
 
 function typeChooserModal(){
   const types = [
-    {id:'manutenzioni', icon:ICONS.wrench, label:'Manutenzione'},
-    {id:'scadenze', icon:ICONS.calendar, label:'Scadenza'},
-    {id:'problemi', icon:ICONS.alert, label:'Problema'},
-    {id:'rifornimenti', icon:ICONS.gas, label:'Rifornimento'},
+    {id:'manutenzioni', icon:ICONS.wrench, label:'Manutenzione', bg:'var(--accent-dim)', col:'var(--accent)'},
+    {id:'scadenze', icon:ICONS.calendar, label:'Scadenza', bg:'var(--warn-dim)', col:'var(--warn)'},
+    {id:'problemi', icon:ICONS.alert, label:'Problema', bg:'var(--danger-dim)', col:'var(--danger)'},
+    {id:'rifornimenti', icon:ICONS.gas, label:'Rifornimento', bg:'var(--ok-dim)', col:'var(--ok)'},
   ];
   return modalWrapper(`
-    <div class="modal-header"><h2>Nuovo elemento</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.plus}</div><h2>Nuovo elemento</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <div class="type-grid">
-      ${types.map(t=>`<button class="type-opt" data-action="openForm" data-type="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
+      ${types.map(t=>`<button class="type-opt" data-action="openForm" data-type="${t.id}"><span class="sec-ico" style="background:${t.bg};color:${t.col};">${t.icon}</span><span>${t.label}</span></button>`).join('')}
     </div>
   `);
 }
@@ -919,7 +919,7 @@ function typeChooserModal(){
 function veicoloFormModal(payload){
   const v = payload?.id ? state.veicoli.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><h2>${v?'Modifica veicolo':'Nuovo veicolo'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.bike}</div><h2>${v?'Modifica veicolo':'Nuovo veicolo'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="veicoloForm">
       <div class="field"><label>Tipo</label>
         <div class="sub-tabs" style="margin-bottom:0;">
@@ -956,7 +956,7 @@ function presetDataDefault(){
 function manutenzioneFormModal(payload){
   const m = payload?.id ? state.cache.manutenzioni.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.wrench}</div><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
@@ -993,7 +993,7 @@ function manutenzioneFormModal(payload){
 function scadenzaFormModal(payload){
   const s = payload?.id ? state.cache.scadenze.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--warn-dim);color:var(--warn);">${ICONS.calendar}</div><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     ${s?.stato==='completata' ? `<div class="badge badge-ok" style="margin-bottom:14px;display:inline-block;">✓ Completata</div>` : ''}
     ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:4px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Scansiona documento (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
     <form id="entryForm">
@@ -1024,7 +1024,7 @@ function scadenzaFormModal(payload){
 function problemaFormModal(payload){
   const p = payload?.id ? state.cache.problemi.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><h2>${p?'Modifica problema':'Nuovo problema'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--danger-dim);color:var(--danger);">${ICONS.alert}</div><h2>${p?'Modifica problema':'Nuovo problema'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${p?.data||presetDataDefault()}" required></div>
       <div class="field"><label>Sintomi</label><textarea name="sintomi" rows="2" required>${escapeHTML(p?.sintomi||'')}</textarea></div>
@@ -1047,7 +1047,7 @@ function problemaFormModal(payload){
 function rifornimentoFormModal(payload){
   const r = payload?.id ? state.cache.rifornimenti.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);">${ICONS.gas}</div><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${r?.km??currentVeicolo()?.kmAttuali??0}" required></div>
@@ -1059,7 +1059,7 @@ function rifornimentoFormModal(payload){
       </div>
       <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
       <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
-      ${r && r.litri>0 ? `<div class="muted mono" style="font-size:12.5px;margin-top:6px;padding-left:2px;">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
+      ${r && r.litri>0 ? `<div class="mono" style="display:inline-block;font-size:13px;margin-top:12px;padding:8px 12px;border-radius:12px;background:var(--accent-dim);color:var(--accent);">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
       <div class="actions-footer">
         ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveRifornimento" data-id="${r?.id||''}">Salva</button>
@@ -1071,8 +1071,8 @@ function rifornimentoFormModal(payload){
 function kmUpdateModal(veicoloId){
   const v = state.veicoli.find(x=>x.id===veicoloId);
   return modalWrapper(`
-    <div class="modal-header"><h2>Aggiorna km</h2><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
-    ${state.settings.geminiApiKey ? `<label class="btn btn-ghost btn-block" style="cursor:pointer;margin-bottom:14px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Leggi da foto contachilometri (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.dashboard}</div><h2>Aggiorna km</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    ${state.settings.geminiApiKey ? `<label class="btn-soft" style="cursor:pointer;margin-bottom:14px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Leggi da foto contachilometri (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
     <form id="kmForm">
       <div class="field"><label>Km attuali</label><input name="km" id="kmInput" type="number" value="${v.kmAttuali}" required></div>
       <div class="actions-footer">

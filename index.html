@@ -254,6 +254,27 @@
   .settings .checkbox .icon{width:16px;height:16px;}
   .settings input[type="number"],.settings input[type="password"]{min-height:44px;border-radius:12px;}
   .step-n{width:24px;height:24px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+  /* ---- Restyle modali e form (push 1: struttura, campi, pulsanti) ---- */
+  .modal-overlay{background:rgba(5,9,18,.72);}
+  .modal-sheet{background:var(--bg-2);border-top:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;}
+  .modal-sheet::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:var(--border);margin:-8px auto 14px;}
+  .modal-header{gap:12px;}
+  .modal-header h2{font-size:18px;}
+  .modal-sheet label{font-weight:500;}
+  .modal-sheet input,.modal-sheet select,.modal-sheet textarea{min-height:44px;border-radius:12px;}
+  .modal-sheet textarea{min-height:88px;resize:vertical;}
+  .modal-sheet #syncKmField label{min-height:44px;}
+  .modal-sheet #syncKmField input[type="checkbox"]{width:20px !important;height:20px;}
+  .modal-sheet .sub-tab{min-height:44px;border-radius:12px;font-size:14px;}
+  .modal-sheet .sub-tab.active{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+  .modal-sheet .btn-soft{margin-top:0;}
+  .modal-sheet label.btn-soft{margin-bottom:0;}
+  .modal-sheet .btn{min-height:48px;border-radius:14px;}
+  .modal-sheet .actions-footer{margin-top:24px;}
+  .modal-sheet .actions-footer .btn-danger{flex-shrink:0;min-width:48px;}
+  .type-opt{background:var(--surface-2);min-height:44px;}
+  .type-opt .sec-ico .icon{width:20px;height:20px;color:inherit;}
 </style>
 </head>
 <body>
