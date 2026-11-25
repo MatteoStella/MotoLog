@@ -28,7 +28,7 @@ function geminiURL(model){ return `https://generativelanguage.googleapis.com/v1b
 const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
-  dark:  { bg:'#121214', 'bg-rgb':'18,18,20', 'bg-2':'#18181B', surface:'#1C1C21', 'surface-2':'#232328', border:'#313136', text:'#EDEDEF', 'text-muted':'#8B8B93', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
+  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)' },
   light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)' },
 };
 const ACCENT_TOKENS = {
@@ -361,61 +361,54 @@ function viewDashboard(){
   <div class="content">
     ${bannerHTML(v)}
     ${scadenzaBannerHTML(v)}
-    <div class="card gauge-hero" style="padding:20px 18px 18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;align-self:stretch;">
-        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Prossima scadenza</div>
-        ${(() => {
-          const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
-          const badgeColor = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
-          const badgeBg = !nextManut ? 'var(--surface-2)' : pct>0.5 ? 'var(--ok-dim)' : pct>0.2 ? 'var(--warn-dim)' : 'var(--danger-dim)';
-          const s = ICONS.wrench;
-          return `<div style="width:28px;height:28px;border-radius:8px;background:${badgeBg};color:${badgeColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${s.replace('class="icon"','class="icon" style="width:15px;height:15px;"')}</div>`;
-        })()}
+    <div class="card">
+      <div class="veh-head">
+        <div class="veh-logo">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
+        <div style="min-width:0;">
+          <div class="veh-name">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
+          ${v.targa ? `<div class="plate mono">${escapeHTML(v.targa)}</div>` : ''}
+        </div>
       </div>
       ${(() => {
-        const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
-        const barColor = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
-        const label = nextManut ? fmtKm(kmRimanenti).replace(' km','') : '—';
-        const sub = nextManut ? `km a ${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}` : 'Nessuna scadenza km impostata';
-        return `<div class="mono" style="font-size:42px;font-weight:700;line-height:1;margin-top:14px;">${label}</div>
-        <div class="muted" style="font-size:13px;margin-top:4px;">${sub}</div>
-        <div style="align-self:stretch;margin-top:18px;">
-          <div style="width:100%;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;"><div style="height:100%;width:${Math.round((1-pct)*100)}%;background:${barColor};border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);"></div></div>
-          ${nextManut ? `<div class="mono muted" style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;"><span>${fmtKm(nextManut.km||0)}</span><span>${fmtKm(nextManut.prossimaScadenzaKm)}</span></div>` : ''}
+        const tile = (icon,bg,col,lbl,val,sub) => `<div class="tile"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-txt"><div class="tile-lbl">${lbl}</div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div></div>`;
+        const gScad = prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : null;
+        const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30) : gScad);
+        const scadSub = gScad===null ? 'Nessuna scadenza' : (gScad>30 ? (Math.ceil(gScad/30)===1?'mese':'mesi') : 'gg')+' — '+tipoScadenzaLabel(prossimaScadenzaData.tipo);
+        return `<div class="tile-grid">
+          ${tile(ICONS.dashboard,'var(--accent-dim)','var(--accent)','Km attuali',fmtKm(v.kmAttuali))}
+          ${v.anno ? tile(ICONS.calendar,'var(--surface)','var(--text-muted)','Anno',escapeHTML(String(v.anno))) : ''}
+          ${tile(ICONS.gas,'var(--accent-dim)','var(--accent)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti')}
+          ${tile(ICONS.calendar,'var(--warn-dim)','var(--warn)','Scadenza',scadVal,scadSub)}
         </div>`;
       })()}
-      <button data-action="openKmUpdate" data-id="${v.id}" style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">
-        ${(() => { const s = ICONS.edit; return s.replace('class="icon"','class="icon" style="width:14px;height:14px;"'); })()}
-        <span class="mono">${(() => { const d = daysBetween(v.dataUltimoAggiornamentoKm, todayISO()); return d<=0 ? 'Km aggiornati oggi' : d===1 ? 'Km aggiornati ieri' : `Km aggiornati ${d} giorni fa`; })()}</span>
-      </button>
     </div>
-    <div class="gauge-mini-row">
-      <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:20px;height:20px;border-radius:6px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.gas; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
-          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Consumo</span>
-        </div>
-        <div class="mono" style="font-size:20px;font-weight:700;">${consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</div>
-        <div class="muted" style="font-size:11px;">${consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti'}</div>
+    ${(() => {
+      const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
+      const col = !nextManut ? 'var(--text-muted)' : pct>0.5 ? 'var(--ok)' : pct>0.2 ? 'var(--warn)' : 'var(--danger)';
+      const bg = !nextManut ? 'var(--surface-2)' : pct>0.5 ? 'var(--ok-dim)' : pct>0.2 ? 'var(--warn-dim)' : 'var(--danger-dim)';
+      const label = nextManut ? fmtKm(kmRimanenti).replace(' km','') : '—';
+      const sub = nextManut ? `km a ${categoriaLabel(nextManut.categoria, nextManut.categoriaCustom)}` : 'Nessuna scadenza km impostata';
+      const d = daysBetween(v.dataUltimoAggiornamentoKm, todayISO());
+      const kmTxt = d<=0 ? 'Km aggiornati oggi' : d===1 ? 'Km aggiornati ieri' : `Km aggiornati ${d} giorni fa`;
+      return `<div class="card">
+        <div class="sec-head"><div class="sec-ico" style="background:${bg};color:${col};">${ICONS.wrench}</div><h3>Prossima scadenza</h3></div>
+        <div class="big-num mono">${label}</div>
+        <div class="muted" style="font-size:13px;margin-top:4px;">${sub}</div>
+        <div class="bar"><div class="bar-fill" style="width:${Math.round((1-pct)*100)}%;background:${col};"></div></div>
+        ${nextManut ? `<div class="mono muted bar-scale"><span>${fmtKm(nextManut.km||0)}</span><span>${fmtKm(nextManut.prossimaScadenzaKm)}</span></div>` : ''}
+        <button class="btn-soft" data-action="openKmUpdate" data-id="${v.id}">${ICONS.edit}<span class="mono">${kmTxt}</span></button>
+      </div>`;
+    })()}
+    <div class="card row-card" data-action="openSpese">
+      <div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);font-weight:700;font-size:18px;">€</div>
+      <div class="grow">
+        <div class="muted" style="font-size:12px;">Spesa ultimi 12 mesi</div>
+        <div class="mono" style="font-size:22px;font-weight:700;margin-top:2px;">${fmtEuro(spesa12Mesi)}</div>
       </div>
-      <div class="gauge-mini">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:20px;height:20px;border-radius:6px;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;">${(() => { const s = ICONS.calendar; return s.replace('class="icon"','class="icon" style="width:13px;height:13px;"'); })()}</div>
-          <span class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Scadenza</span>
-        </div>
-        <div class="mono" style="font-size:20px;font-weight:700;">${prossimaScadenzaData ? (() => { const g = daysBetween(todayISO(),prossimaScadenzaData.data); return g>30 ? Math.ceil(g/30) : g; })() : '—'}</div>
-        <div class="muted" style="font-size:11px;">${prossimaScadenzaData ? (() => { const g = daysBetween(todayISO(),prossimaScadenzaData.data); return (g>30 ? (Math.ceil(g/30)===1?'mese':'mesi') : 'gg')+' — '+tipoScadenzaLabel(prossimaScadenzaData.tipo); })() : 'Nessuna scadenza'}</div>
-      </div>
-    </div>
-    <div class="card" data-action="openSpese" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
-      <div>
-        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Spesa ultimi 12 mesi</div>
-        <div class="mono" style="font-size:20px;font-weight:700;margin-top:4px;">${fmtEuro(spesa12Mesi)}</div>
-      </div>
-      <div style="width:28px;height:28px;border-radius:8px;background:var(--ok-dim);color:var(--ok);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">€</div>
+      <div class="chev">${ICONS.chevron}</div>
     </div>
 
-    <div class="section-title">Eventi recenti</div>
+    <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.list}</div><h3>Eventi recenti</h3></div>
     ${eventi.length ? `<div class="card">${eventi.map((e,i)=>{
       const colorOf = t => t==='problemi' ? 'var(--danger)' : 'var(--accent)';
       const topColor = colorOf(e._type);

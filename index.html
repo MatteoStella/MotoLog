@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MyGarage</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com; manifest-src 'self'; base-uri 'self'; form-action 'self';">
-<meta name="theme-color" content="#121214">
+<meta name="theme-color" content="#0B1220">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
 <style>
   :root{
-    --bg:#121214;
-    --bg-rgb:18,18,20;
-    --bg-2:#18181B;
-    --surface:#1C1C21;
-    --surface-2:#232328;
-    --border:#313136;
-    --text:#EDEDEF;
-    --text-muted:#8B8B93;
+    --bg:#0B1220;
+    --bg-rgb:11,18,32;
+    --bg-2:#0F1829;
+    --surface:#111B2E;
+    --surface-2:#17233A;
+    --border:#22304D;
+    --text:#E8EEF9;
+    --text-muted:#8A97B2;
     --accent:#2F80FF;
     --accent-dim:rgba(47,128,255,.16);
     --on-accent:#FFFFFF;
@@ -30,7 +30,7 @@
     --warn-dim:rgba(232,163,61,.14);
     --danger:#E4483C;
     --danger-dim:rgba(228,72,60,.14);
-    --radius:16px;
+    --radius:20px;
     --radius-sm:10px;
     --font-display:'Space Grotesk',sans-serif;
     --font-body:'Inter',sans-serif;
@@ -183,6 +183,36 @@
   .proposal-item:last-child{border-bottom:none;}
   .checkbox{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
   .checkbox.checked{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+
+  /* ---- Restyle dashboard (card con badge icona, tessere, barra piatta) ---- */
+  .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .sec-head h3{font-size:17px;}
+  .sec-ico{width:40px;height:40px;border-radius:12px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sec-ico .icon{width:20px;height:20px;}
+  .veh-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  .veh-logo{width:52px;height:52px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;}
+  .veh-logo .icon{width:28px;height:28px;}
+  .veh-name{font-family:var(--font-display);font-size:20px;font-weight:600;line-height:1.2;}
+  .plate{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);font-size:15px;font-weight:600;letter-spacing:.1em;}
+  .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .tile{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:12px;display:flex;align-items:center;gap:10px;min-width:0;}
+  .tile-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .tile-ico .icon{width:17px;height:17px;}
+  .tile-txt{min-width:0;}
+  .tile-lbl{font-size:11px;color:var(--text-muted);}
+  .tile-val{font-size:16px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tile-sub{font-size:11px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .big-num{font-size:42px;font-weight:700;line-height:1;}
+  .bar{width:100%;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-top:18px;}
+  .bar-fill{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);}
+  .bar-scale{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;}
+  .btn-soft{margin-top:16px;width:100%;min-height:44px;border-radius:14px;border:none;background:var(--accent-dim);color:var(--accent);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;}
+  .btn-soft .icon{width:16px;height:16px;}
+  .btn-soft:active{transform:scale(.98);}
+  .row-card{display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .row-card .grow{flex:1;min-width:0;}
+  .row-card .chev{color:var(--text-muted);}
+  .row-card .chev .icon{width:18px;height:18px;}
 </style>
 </head>
 <body>
