@@ -28,8 +28,8 @@ function geminiURL(model){ return `https://generativelanguage.googleapis.com/v1b
 const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
 
 const MODE_TOKENS = {
-  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)', info:'#22C7E6', 'info-dim':'rgba(34,199,230,.16)' },
-  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)', info:'#0E8FA8', 'info-dim':'rgba(14,143,168,.12)' },
+  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)', info:'#FF8A3D', 'info-dim':'rgba(255,138,61,.16)' },
+  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)', info:'#D9660F', 'info-dim':'rgba(217,102,15,.12)' },
 };
 const ACCENT_TOKENS = {
   blu:     { accent:'#2F80FF', 'accent-dim':'rgba(47,128,255,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'47,128,255',  label:'Blu elettrico' },
