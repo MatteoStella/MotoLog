@@ -32,6 +32,10 @@
     --danger-dim:rgba(228,72,60,.14);
     --info:#FF8A3D;
     --info-dim:rgba(255,138,61,.16);
+    --ok-text:#2ED47A;
+    --warn-text:#E8A33D;
+    --danger-text:#E86257;
+    --info-text:#FF8A3D;
     --radius:20px;
     --radius-sm:10px;
     --font-display:'Space Grotesk',sans-serif;
@@ -131,9 +135,9 @@
   .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin:16px 2px 4px;font-size:11px;color:var(--text-muted);}
   .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
   .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;}
-  .badge-ok{background:var(--ok-dim);color:var(--ok);}
-  .badge-warn{background:var(--warn-dim);color:var(--warn);}
-  .badge-danger{background:var(--danger-dim);color:var(--danger);}
+  .badge-ok{background:var(--ok-dim);color:var(--ok-text);}
+  .badge-warn{background:var(--warn-dim);color:var(--warn-text);}
+  .badge-danger{background:var(--danger-dim);color:var(--danger-text);}
 
   /* Tab bar */
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(var(--bg-rgb),.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;gap:4px;padding:8px 8px calc(8px + var(--safe-bottom));z-index:10;max-width:520px;margin:0 auto;}
@@ -166,6 +170,7 @@
   .msg-ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
   .chat-input-row{position:sticky;bottom:0;display:flex;gap:8px;background:var(--bg);padding:10px 0 4px;}
 
+  .toast-act{background:none;border:none;color:var(--accent);font-weight:700;font-size:13px;min-height:44px;padding:0 14px 0 8px;margin:-9px -18px -9px 0;cursor:pointer;}
   .toast{position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:9px 18px 9px 10px;border-radius:14px;font-size:13px;z-index:30;display:flex;align-items:center;gap:8px;}
   .check-badge{width:20px;height:20px;border-radius:50%;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:popIn .35s cubic-bezier(.34,1.56,.64,1);}
   @keyframes popIn{0%{transform:scale(0);}70%{transform:scale(1.15);}100%{transform:scale(1);}}

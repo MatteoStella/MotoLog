@@ -25,11 +25,11 @@
 const GEMINI_MODEL = "gemini-flash-latest"; // alias ufficiale, punta sempre all'ultima versione stabile
 const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash"; // usato solo se il modello principale è sovraccarico
 function geminiURL(model){ return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`; }
-const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu' };
+const DEFAULT_SETTINGS = { kmReminderDays: 10, scadenzaReminderDays: 14, includiAllegatiBackup: true, geminiApiKey: '', themeMode: 'dark', themeAccent: 'blu', ultimoBackup: null };
 
 const MODE_TOKENS = {
-  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)', info:'#FF8A3D', 'info-dim':'rgba(255,138,61,.16)' },
-  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#D99A00', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)', info:'#D9660F', 'info-dim':'rgba(217,102,15,.12)' },
+  dark:  { bg:'#0B1220', 'bg-rgb':'11,18,32', 'bg-2':'#0F1829', surface:'#111B2E', 'surface-2':'#17233A', border:'#22304D', text:'#E8EEF9', 'text-muted':'#8A97B2', ok:'#2ED47A', 'ok-dim':'rgba(46,212,122,.16)', warn:'#E8A33D', 'warn-dim':'rgba(232,163,61,.14)', danger:'#E4483C', 'danger-dim':'rgba(228,72,60,.14)', info:'#FF8A3D', 'info-dim':'rgba(255,138,61,.16)', 'ok-text':'#2ED47A', 'warn-text':'#E8A33D', 'danger-text':'#E86257', 'info-text':'#FF8A3D' },
+  light: { bg:'#F4F3EE', 'bg-rgb':'244,243,238', 'bg-2':'#EDEBE3', surface:'#FFFFFF', 'surface-2':'#F0EEE6', border:'#E1DCCF', text:'#15171C', 'text-muted':'#6D6F78', ok:'#2E8B57', 'ok-dim':'rgba(46,139,87,.12)', warn:'#B68100', 'warn-dim':'rgba(217,154,0,.14)', danger:'#D81E3A', 'danger-dim':'rgba(216,30,58,.10)', info:'#D9660F', 'info-dim':'rgba(217,102,15,.12)', 'ok-text':'#287A4D', 'warn-text':'#8F6600', 'danger-text':'#D21D38', 'info-text':'#AE520C' },
 };
 const ACCENT_TOKENS = {
   blu:     { accent:'#2F80FF', 'accent-dim':'rgba(47,128,255,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'47,128,255',  label:'Blu elettrico' },
@@ -37,9 +37,14 @@ const ACCENT_TOKENS = {
   ciano:   { accent:'#00B4CC', 'accent-dim':'rgba(0,180,204,.16)',   'on-accent':'#08181A', 'accent-shadow-rgb':'0,180,204',   label:'Ciano digitale' },
   magenta: { accent:'#E0368E', 'accent-dim':'rgba(224,54,142,.16)',  'on-accent':'#FFFFFF', 'accent-shadow-rgb':'224,54,142',  label:'Magenta acceso' },
 };
+// Nel tema chiaro il ciano standard ha contrasto troppo basso (≈2:1): variante più scura
+const LIGHT_ACCENT_OVERRIDES = {
+  ciano: { accent:'#00788C', 'accent-dim':'rgba(0,120,140,.14)', 'on-accent':'#FFFFFF', 'accent-shadow-rgb':'0,120,140' },
+};
 function applyTheme(){
   const mode = MODE_TOKENS[state.settings.themeMode] || MODE_TOKENS.dark;
-  const accent = ACCENT_TOKENS[state.settings.themeAccent] || ACCENT_TOKENS.blu;
+  const accentKey = ACCENT_TOKENS[state.settings.themeAccent] ? state.settings.themeAccent : 'blu';
+  const accent = { ...ACCENT_TOKENS[accentKey], ...(state.settings.themeMode==='light' ? (LIGHT_ACCENT_OVERRIDES[accentKey]||{}) : {}) };
   const root = document.documentElement.style;
   Object.entries(mode).forEach(([k,v]) => root.setProperty('--'+k, v));
   Object.entries(accent).forEach(([k,v]) => { if(k!=='label') root.setProperty('--'+k, v); });
@@ -176,6 +181,9 @@ const state = {
   calendarSelectedDate: null,
   backupExcluded: new Set(),
   busyStatus: null,
+  chatError: null,
+  toastAction: null,
+  storagePersisted: null,
 };
 
 async function loadSettings(){
@@ -188,8 +196,18 @@ async function saveSetting(key, value){
   await dbPut('settings', { key, value });
 }
 
-function showToast(text){ state.toast = {text, success:false}; render(); setTimeout(()=>{ state.toast=null; render(); }, 3200); }
-function showSuccessToast(text){ state.toast = {text, success:true}; render(); setTimeout(()=>{ state.toast=null; render(); }, 2400); }
+let toastSeq = 0;
+function setToast(t, ms){
+  const id = ++toastSeq;
+  if(!t.actionLabel) state.toastAction = null;
+  state.toast = { ...t, id };
+  render();
+  setTimeout(()=>{ if(state.toast && state.toast.id===id){ state.toast=null; state.toastAction=null; render(); } }, ms);
+}
+function showToast(text){ setToast({text, success:false}, 3200); }
+function showSuccessToast(text){ setToast({text, success:true}, 2400); }
+// Toast con un pulsante (es. "Annulla", "Riprova"); resta visibile più a lungo
+function showActionToast(text, label, fn, ms=6500){ state.toastAction = fn; setToast({text, success:false, actionLabel:label}, ms); }
 
 async function loadVeicoli(){
   state.veicoli = await dbGetAll('veicoli');
@@ -277,7 +295,7 @@ function bannerHTML(veicolo){
         <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="openKmUpdate" data-id="${veicolo.id}">Aggiorna ora</button>
       </div>
     </div>
-    <button class="banner-close" data-action="dismissBanner" data-id="${veicolo.id}">${ICONS.close}</button>
+    <button class="banner-close" data-action="dismissBanner" data-id="${veicolo.id}" aria-label="Chiudi avviso">${ICONS.close}</button>
   </div>`;
 }
 
@@ -304,7 +322,32 @@ function scadenzaBannerHTML(veicolo){
         <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="setTab" data-id="log">Vedi nel Diario</button>
       </div>
     </div>
-    <button class="banner-close" data-action="dismissScadenzaBanner" data-id="${veicolo.id}">${ICONS.close}</button>
+    <button class="banner-close" data-action="dismissScadenzaBanner" data-id="${veicolo.id}" aria-label="Chiudi avviso">${ICONS.close}</button>
+  </div>`;
+}
+
+const BACKUP_REMIND_DAYS = 30;
+function backupDaysAgo(){
+  const t = state.settings.ultimoBackup;
+  if(!t) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(t).getTime()) / 86400000));
+}
+function backupBannerHTML(){
+  if(!state.veicoli.length || state.bannerDismissed['bkp_'+todayISO()]) return '';
+  const d = backupDaysAgo();
+  if(d !== null && d < BACKUP_REMIND_DAYS) return '';
+  const nDati = state.cache.manutenzioni.length + state.cache.rifornimenti.length + state.cache.scadenze.length + state.cache.problemi.length;
+  if(d === null && nDati < 3) return '';
+  const testo = d === null ? 'Non hai ancora fatto nessun backup: i dati sono solo su questo dispositivo.' : `Ultimo backup ${d} giorni fa: i dati sono solo su questo dispositivo.`;
+  return `
+  <div class="banner">
+    <div class="banner-icon">${ICONS.upload}</div>
+    <div class="banner-text">${testo}
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="exportBackup">Esporta ora</button>
+      </div>
+    </div>
+    <button class="banner-close" data-action="dismissBackupBanner" aria-label="Chiudi avviso">${ICONS.close}</button>
   </div>`;
 }
 
@@ -325,7 +368,7 @@ function tabBarHTML(){
 function fabHTML(){
   if(state.tab==='ai' || state.tab==='impostazioni') return '';
   const action = state.tab==='veicoli' ? 'openVeicoloForm' : 'openTypeChooser';
-  return `<button class="fab" data-action="${action}">${ICONS.plus}</button>`;
+  return `<button class="fab" data-action="${action}" aria-label="${state.tab==='veicoli' ? 'Nuovo veicolo' : 'Nuovo elemento'}">${ICONS.plus}</button>`;
 }
 
 /* ---------------- VISTE ---------------- */
@@ -361,6 +404,7 @@ function viewDashboard(){
   <div class="content">
     ${bannerHTML(v)}
     ${scadenzaBannerHTML(v)}
+    ${backupBannerHTML()}
     <div class="card">
       <div class="veh-head">
         <div class="veh-logo">${v.tipo==='moto'?ICONS.bike:ICONS.car}</div>
@@ -397,6 +441,7 @@ function viewDashboard(){
         <div class="bar"><div class="bar-fill" style="width:${Math.round((1-pct)*100)}%;background:${col};"></div></div>
         ${nextManut ? `<div class="mono muted bar-scale"><span>${fmtKm(nextManut.km||0)}</span><span>${fmtKm(nextManut.prossimaScadenzaKm)}</span></div>` : ''}
         <button class="btn-soft" data-action="openKmUpdate" data-id="${v.id}">${ICONS.edit}<span class="mono">${kmTxt}</span></button>
+        <button class="btn-soft" style="margin-top:8px;background:var(--ok-dim);color:var(--ok-text);" data-action="openForm" data-type="rifornimenti">${ICONS.gas}<span>Nuovo rifornimento</span></button>
       </div>`;
     })()}
     <div class="card row-card" data-action="openSpese">
@@ -475,7 +520,7 @@ function speseModal(){
   const totale = voci.reduce((t,x)=>t+x.costo,0);
   const nomi = {manutenzioni:'Manutenzione', rifornimenti:'Rifornimento', scadenze:'Scadenza'};
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);"><span style="font-weight:700;font-size:18px;">€</span></div><h2>Spesa ultimi 12 mesi</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);"><span style="font-weight:700;font-size:18px;">€</span></div><h2>Spesa ultimi 12 mesi</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <div class="mono" style="font-size:24px;font-weight:700;margin-bottom:4px;">${fmtEuro(totale)}</div>
     <div class="muted" style="font-size:12px;margin-bottom:14px;">${voci.length} ${voci.length===1?'voce':'voci'}</div>
     ${voci.length ? `<div class="card">${voci.map(x=>`
@@ -504,8 +549,8 @@ function viewVeicoloDetail(v){
       <div class="veh-head" style="justify-content:space-between;">
         <div class="veh-name grow" style="min-width:0;overflow-wrap:anywhere;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
-          <button class="icon-btn" data-action="setPreferito" data-id="${v.id}" style="${v.preferito?'color:var(--warn);':''}" title="Veicolo principale">${(() => { const s = ICONS.star; return v.preferito ? s.replace('class="icon"','class="icon" fill="currentColor"') : s; })()}</button>
-          <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}">${ICONS.wrench}</button>
+          <button class="icon-btn" data-action="setPreferito" data-id="${v.id}" style="${v.preferito?'color:var(--warn);':''}" title="Veicolo principale" aria-label="Veicolo principale" aria-pressed="${!!v.preferito}">${(() => { const s = ICONS.star; return v.preferito ? s.replace('class="icon"','class="icon" fill="currentColor"') : s; })()}</button>
+          <button class="icon-btn" data-action="openVeicoloForm" data-id="${v.id}" aria-label="Modifica veicolo">${ICONS.wrench}</button>
         </div>
       </div>
       <div class="tile-grid">
@@ -523,7 +568,7 @@ function viewVeicoloDetail(v){
       ${state.cache.manuale ? `
         <div class="card-row">
           <div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="sec-ico" style="background:var(--surface-2);color:var(--text-muted);">${ICONS.file}</div><span style="min-width:0;overflow-wrap:anywhere;">${escapeHTML(state.cache.manuale.nome)}</span></div>
-          <button class="icon-btn" data-action="deleteManuale" data-id="${state.cache.manuale.id}">${ICONS.trash}</button>
+          <button class="icon-btn" data-action="deleteManuale" data-id="${state.cache.manuale.id}" aria-label="Elimina manuale">${ICONS.trash}</button>
         </div>` : `
         <label style="margin:0 0 8px;">Nessun manuale caricato</label>
         <label class="btn-soft" style="cursor:pointer;">
@@ -543,6 +588,7 @@ function viewVeicoloDetail(v){
     <button class="btn-soft" style="margin-top:20px;" data-action="exportReportPDF" data-id="${v.id}" ${state.busy?'disabled':''}>
       ${state.busy ? '<div class="spinner"></div> Generazione...' : ICONS.file + ' Esporta report PDF'}
     </button>
+    <button class="btn-soft" style="margin-top:10px;" data-action="exportRifornimentiPDF" data-id="${v.id}" ${state.busy?'disabled':''}>${ICONS.gas} Esporta rifornimenti (PDF)</button>
     <button class="btn btn-danger btn-block" style="margin-top:10px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
   </div>`;
 }
@@ -746,11 +792,12 @@ function viewAIChat(v){
     <div class="chat-scroll">
       ${state.chatHistory.length===0 ? `<div class="muted" style="text-align:center;padding:30px 10px;font-size:13.5px;"><div class="sec-ico" style="margin:0 auto 12px;">${ICONS.spark}</div>Chiedimi consigli su rumori strani, spie accese, o problemi ricorrenti su ${escapeHTML(v.marca)} ${escapeHTML(v.modello)}. Uso lo storico problemi come contesto.</div>` : ''}
       ${state.chatHistory.map(m=>`<div class="msg ${m.role==='user'?'msg-user':'msg-ai'}">${escapeHTML(m.content)}</div>`).join('')}
+      ${state.chatError && !state.busy ? `<div class="msg msg-ai" style="border:1px solid var(--danger);">Errore: ${escapeHTML(state.chatError)}<div style="margin-top:10px;"><button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="retryChat">Riprova</button></div></div>` : ''}
       ${state.busy ? `<div class="msg msg-ai" style="display:flex;align-items:center;gap:8px;"><div class="spinner"></div>${state.busyStatus ? `<span style="font-size:13px;">${escapeHTML(state.busyStatus)}</span>` : ''}</div>` : ''}
     </div>
     <div class="chat-input-row">
       <input type="text" id="chatInput" placeholder="Scrivi un messaggio..." ${state.busy?'disabled':''}>
-      <button class="btn btn-primary" data-action="sendChat" ${state.busy?'disabled':''}>${ICONS.send}</button>
+      <button class="btn btn-primary" data-action="sendChat" aria-label="Invia" ${state.busy?'disabled':''}>${ICONS.send}</button>
     </div>
     <div class="muted" style="font-size:11.5px;text-align:center;margin-top:6px;">Richiede connessione internet</div>
   `;
@@ -771,8 +818,10 @@ function viewAIManuale(v){
         ${state.manualeError ? `
         <div class="banner" style="margin-top:12px;margin-bottom:0;">
           <div class="banner-icon">${ICONS.alert}</div>
-          <div class="banner-text">${escapeHTML(state.manualeError)}</div>
-          <button class="banner-close" data-action="dismissManualeError">${ICONS.close}</button>
+          <div class="banner-text">${escapeHTML(state.manualeError)}
+            <div style="margin-top:8px;"><button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" data-action="analizzaManuale" ${state.busy?'disabled':''}>Riprova</button></div>
+          </div>
+          <button class="banner-close" data-action="dismissManualeError" aria-label="Chiudi avviso">${ICONS.close}</button>
         </div>` : ''}
         <div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px;">Richiede connessione internet</div>
       ` : `
@@ -787,7 +836,7 @@ function viewAIManuale(v){
       <div class="card">
         ${state.proposte.map((p,i)=>`
           <div class="proposal-item">
-            <button class="checkbox ${p.accettata?'checked':''}" data-action="toggleProposta" data-id="${i}">${p.accettata?ICONS.check:''}</button>
+            <button class="checkbox ${p.accettata?'checked':''}" data-action="toggleProposta" data-id="${i}" role="checkbox" aria-checked="${!!p.accettata}" aria-label="Includi proposta">${p.accettata?ICONS.check:''}</button>
             <div style="flex:1;">
               <div class="log-title">${escapeHTML(p.descrizione)}</div>
               <div class="log-sub">${p.intervalloKm?fmtKm(p.intervalloKm):''}${p.intervalloMesi?' · ogni '+p.intervalloMesi+' mesi':''}</div>
@@ -833,7 +882,7 @@ function viewImpostazioni(){
               <div class="muted mono" style="font-size:12px;margin-top:2px;">${state.settings.geminiApiKey.slice(0,6)}••••••••</div>
             </div>
           </div>
-          <button class="icon-btn" data-action="rimuoviGeminiKey">${ICONS.trash}</button>
+          <button class="icon-btn" data-action="rimuoviGeminiKey" aria-label="Rimuovi chiave Gemini">${ICONS.trash}</button>
         </div>
       ` : `
         <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Le funzioni AI (chat, analisi manuale, lettura foto) usano Google Gemini con una chiave gratuita tua — nessun costo, nessuna carta richiesta.</p>
@@ -865,13 +914,15 @@ function viewImpostazioni(){
 
     <div class="card">
       <div class="sec-head"><div class="sec-ico">${ICONS.file}</div><h3>Backup dati</h3></div>
-      <p class="muted" style="font-size:13.5px;margin:0 0 14px;line-height:1.5;">Esporta tutti i dati in un unico file JSON, o ripristina da un backup precedente.</p>
+      <p class="muted" style="font-size:13.5px;margin:0 0 10px;line-height:1.5;">Esporta tutti i dati in un unico file JSON, o ripristina da un backup precedente. La chiave Gemini non è inclusa nel file.</p>
+      <div class="muted" style="font-size:12.5px;margin-bottom:${state.storagePersisted===false?'6':'14'}px;">${backupDaysAgo()===null ? 'Nessun backup ancora eseguito' : backupDaysAgo()===0 ? 'Ultimo backup: oggi' : `Ultimo backup: ${backupDaysAgo()} giorni fa`}</div>
+      ${state.storagePersisted===false ? `<div style="font-size:12.5px;margin-bottom:14px;color:var(--warn-text);">Il browser non garantisce la conservazione dei dati: potrebbe cancellarli se lo spazio scarseggia. Fai backup regolari.</div>` : ''}
       ${state.veicoli.length > 1 ? `
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Veicoli da includere</div>
       ${state.veicoli.map(v=>`
       <div class="card-row" style="margin-bottom:10px;">
         <div style="font-size:14px;">${escapeHTML(v.marca)} ${escapeHTML(v.modello)}</div>
-        <button class="checkbox ${!state.backupExcluded.has(v.id)?'checked':''}" data-action="toggleBackupVeicolo" data-id="${v.id}">${!state.backupExcluded.has(v.id)?ICONS.check:''}</button>
+        <button class="checkbox ${!state.backupExcluded.has(v.id)?'checked':''}" data-action="toggleBackupVeicolo" data-id="${v.id}" role="checkbox" aria-checked="${!state.backupExcluded.has(v.id)}" aria-label="Includi ${escapeHTML(v.marca)} ${escapeHTML(v.modello)} nel backup">${!state.backupExcluded.has(v.id)?ICONS.check:''}</button>
       </div>`).join('')}
       <div style="height:1px;background:var(--border);margin:4px 0 14px;"></div>
       ` : ''}
@@ -880,7 +931,7 @@ function viewImpostazioni(){
           <div style="font-size:14px;">Includi foto e documenti</div>
           <div class="muted" style="font-size:12px;margin-top:2px;">Disattiva per un file più leggero</div>
         </div>
-        <button class="checkbox ${state.settings.includiAllegatiBackup?'checked':''}" data-action="toggleIncludiAllegati">${state.settings.includiAllegatiBackup?ICONS.check:''}</button>
+        <button class="checkbox ${state.settings.includiAllegatiBackup?'checked':''}" data-action="toggleIncludiAllegati" role="checkbox" aria-checked="${!!state.settings.includiAllegatiBackup}" aria-label="Includi foto e documenti nel backup">${state.settings.includiAllegatiBackup?ICONS.check:''}</button>
       </div>
       <button class="btn-soft" data-action="exportBackup" style="margin-bottom:10px;">${ICONS.upload} Esporta backup</button>
       <label class="btn-soft" style="cursor:pointer;">${ICONS.file} Importa backup<input type="file" accept="application/json" id="importInput" style="display:none;"></label>
@@ -913,7 +964,7 @@ function typeChooserModal(){
     {id:'rifornimenti', icon:ICONS.gas, label:'Rifornimento', bg:'var(--ok-dim)', col:'var(--ok)'},
   ];
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.plus}</div><h2>Nuovo elemento</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.plus}</div><h2>Nuovo elemento</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <div class="type-grid">
       ${types.map(t=>`<button class="type-opt" data-action="openForm" data-type="${t.id}"><span class="sec-ico" style="background:${t.bg};color:${t.col};">${t.icon}</span><span>${t.label}</span></button>`).join('')}
     </div>
@@ -923,7 +974,7 @@ function typeChooserModal(){
 function veicoloFormModal(payload){
   const v = payload?.id ? state.veicoli.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.bike}</div><h2>${v?'Modifica veicolo':'Nuovo veicolo'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.bike}</div><h2>${v?'Modifica veicolo':'Nuovo veicolo'}</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <form id="veicoloForm">
       <div class="field"><label>Tipo</label>
         <div class="sub-tabs" style="margin-bottom:0;">
@@ -949,7 +1000,7 @@ function attachThumbsHTML(){
   return state.editAttachments.map(a => `
     <div class="attach-thumb" data-action="viewAttachment" data-id="${a.id||a.tempId}">
       ${a.tipo==='foto' ? `<img src="${a.url}" alt="${escapeHTML(a.nome)}">` : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${ICONS.file}</div>`}
-      <button class="attach-remove" data-action="removeAttachment" data-id="${a.id||a.tempId}">${ICONS.close}</button>
+      <button class="attach-remove" data-action="removeAttachment" data-id="${a.id||a.tempId}" aria-label="Rimuovi allegato">${ICONS.close}</button>
     </div>`).join('');
 }
 
@@ -960,7 +1011,7 @@ function presetDataDefault(){
 function manutenzioneFormModal(payload){
   const m = payload?.id ? state.cache.manutenzioni.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.wrench}</div><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.wrench}</div><h2>${m?'Modifica manutenzione':'Nuova manutenzione'}</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${m?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${m?.km??currentVeicolo()?.kmAttuali??0}" required></div>
@@ -987,7 +1038,7 @@ function manutenzioneFormModal(payload){
         <div class="attach-row" id="attachPreview">${attachThumbsHTML()}</div>
       </div>
       <div class="actions-footer">
-        ${m?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="manutenzioni" data-id="${m.id}">${ICONS.trash}</button>`:''}
+        ${m?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="manutenzioni" data-id="${m.id}" aria-label="Elimina">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveManutenzione" data-id="${m?.id||''}">Salva</button>
       </div>
     </form>
@@ -997,7 +1048,7 @@ function manutenzioneFormModal(payload){
 function scadenzaFormModal(payload){
   const s = payload?.id ? state.cache.scadenze.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--warn-dim);color:var(--warn);">${ICONS.calendar}</div><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--warn-dim);color:var(--warn);">${ICONS.calendar}</div><h2>${s?'Modifica scadenza':'Nuova scadenza'}</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     ${s?.stato==='completata' ? `<div class="badge badge-ok" style="margin-bottom:14px;display:inline-block;">✓ Completata</div>` : ''}
     ${state.settings.geminiApiKey ? `<label class="btn-soft" style="cursor:pointer;margin-bottom:12px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Scansiona documento (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaScadenza"></label>` : ''}
     <form id="entryForm">
@@ -1018,7 +1069,7 @@ function scadenzaFormModal(payload){
       ${s ? `<div id="calStato">${calStatoHTML(s)}</div><a data-action="calendarioAggiunto" data-id="${s.id}" href="${googleCalendarLink({title:`${tipoScadenzaLabel(s.tipo)} - ${currentVeicolo()?.marca||''} ${currentVeicolo()?.modello||''}`.trim(), dateISO:s.data, details:'Promemoria da MyGarage', recurRule: s.ricorrenza==='annuale' ? 'RRULE:FREQ=YEARLY;INTERVAL=1' : s.ricorrenza==='biennale' ? 'RRULE:FREQ=YEARLY;INTERVAL=2' : null})}" target="_blank" rel="noopener" class="btn-soft" style="margin-top:${s.calendarAggiunto?'8':'14'}px;">${ICONS.calendar} ${s.calendarAggiunto?'Aggiungi di nuovo':'Aggiungi'} a Google Calendar${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' (ricorrente)' : ''}</a>` : ''}
       ${s && s.stato!=='completata' ? `<button type="button" class="btn-soft" style="margin-top:14px;background:var(--ok-dim);color:var(--ok);" data-action="completaScadenza" data-id="${s.id}">✓ Segna come completata${s.ricorrenza && s.ricorrenza!=='nessuna' ? ' e rinnova' : ''}</button>` : ''}
       <div class="actions-footer">
-        ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}">${ICONS.trash}</button>`:''}
+        ${s?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="scadenze" data-id="${s.id}" aria-label="Elimina">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveScadenza" data-id="${s?.id||''}">Salva</button>
       </div>
     </form>
@@ -1028,7 +1079,7 @@ function scadenzaFormModal(payload){
 function problemaFormModal(payload){
   const p = payload?.id ? state.cache.problemi.find(x=>x.id===payload.id) : null;
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--danger-dim);color:var(--danger);">${ICONS.alert}</div><h2>${p?'Modifica problema':'Nuovo problema'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--danger-dim);color:var(--danger);">${ICONS.alert}</div><h2>${p?'Modifica problema':'Nuovo problema'}</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${p?.data||presetDataDefault()}" required></div>
       <div class="field"><label>Sintomi</label><textarea name="sintomi" rows="2" required>${escapeHTML(p?.sintomi||'')}</textarea></div>
@@ -1041,17 +1092,23 @@ function problemaFormModal(payload){
         </select>
       </div>
       <div class="actions-footer">
-        ${p?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="problemi" data-id="${p.id}">${ICONS.trash}</button>`:''}
+        ${p?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="problemi" data-id="${p.id}" aria-label="Elimina">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveProblema" data-id="${p?.id||''}">Salva</button>
       </div>
     </form>
   `);
 }
 
+function lastPrezzoLitro(){
+  const arr = state.cache.rifornimenti.filter(x=>x.litri>0 && x.costo>=0)
+    .sort((a,b)=> new Date(b.data)-new Date(a.data) || b.km-a.km);
+  return arr.length ? arr[0].costo/arr[0].litri : null;
+}
 function rifornimentoFormModal(payload){
   const r = payload?.id ? state.cache.rifornimenti.find(x=>x.id===payload.id) : null;
+  const prezzo0 = r ? (r.litri>0 ? r.costo/r.litri : null) : lastPrezzoLitro();
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);">${ICONS.gas}</div><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);">${ICONS.gas}</div><h2>${r?'Modifica rifornimento':'Nuovo rifornimento'}</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     <form id="entryForm">
       <div class="field"><label>Data</label><input name="data" type="date" value="${r?.data||presetDataDefault()}" required data-action="toggleSyncKmField"></div>
       <div class="field"><label>Km</label><input name="km" type="number" value="${r?.km??currentVeicolo()?.kmAttuali??0}" required></div>
@@ -1061,11 +1118,11 @@ function rifornimentoFormModal(payload){
           <span style="font-size:13px;color:var(--text);">Aggiorna anche i km attuali del veicolo</span>
         </label>
       </div>
-      <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required></div>
-      <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required></div>
-      ${r && r.litri>0 ? `<div class="mono" style="display:inline-block;font-size:13px;margin-top:12px;padding:8px 12px;border-radius:12px;background:var(--accent-dim);color:var(--accent);">${(r.costo/r.litri).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} €/L</div>` : ''}
+      <div class="field"><label>Litri</label><input name="litri" type="number" step="0.01" value="${r?.litri??''}" required data-rif="litri"></div>
+      <div class="field"><label>Prezzo al litro (€/L)</label><input name="prezzoL" type="number" step="0.001" min="0" value="${prezzo0 ? prezzo0.toFixed(3) : ''}" data-rif="prezzo">${!r && prezzo0 ? `<div class="muted" style="font-size:12px;margin-top:6px;">Precompilato con l'ultimo rifornimento: il costo si calcola da solo.</div>` : ''}</div>
+      <div class="field"><label>Costo (€)</label><input name="costo" type="number" step="0.01" value="${r?.costo??''}" required data-rif="costo" data-manual="${r?'1':''}"></div>
       <div class="actions-footer">
-        ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}">${ICONS.trash}</button>`:''}
+        ${r?`<button type="button" class="btn btn-danger" data-action="deleteEntry" data-type="rifornimenti" data-id="${r.id}" aria-label="Elimina">${ICONS.trash}</button>`:''}
         <button type="submit" class="btn btn-primary btn-block" data-action="saveRifornimento" data-id="${r?.id||''}">Salva</button>
       </div>
     </form>
@@ -1075,7 +1132,7 @@ function rifornimentoFormModal(payload){
 function kmUpdateModal(veicoloId){
   const v = state.veicoli.find(x=>x.id===veicoloId);
   return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.dashboard}</div><h2>Aggiorna km</h2></div><button class="icon-btn" data-action="closeModal">${ICONS.close}</button></div>
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.dashboard}</div><h2>Aggiorna km</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     ${state.settings.geminiApiKey ? `<label class="btn-soft" style="cursor:pointer;margin-bottom:14px;${state.busy?'opacity:.6;pointer-events:none;':''}">${state.busy ? `<div class="spinner"></div> ${escapeHTML(state.busyStatus || 'Lettura in corso...')}` : `${ICONS.camera} Leggi da foto contachilometri (AI)`}<input type="file" accept="image/*" capture="environment" style="display:none;" data-action="scansionaKm" data-id="${v.id}"></label>` : ''}
     <form id="kmForm">
       <div class="field"><label>Km attuali</label><input name="km" id="kmInput" type="number" value="${v.kmAttuali}" required></div>
@@ -1203,27 +1260,40 @@ async function actionSalvaProposte(){
   render();
 }
 
+function chatContents(){
+  // unisce messaggi consecutivi dello stesso ruolo (dopo un errore l'utente può scrivere di nuovo)
+  const out = [];
+  for(const m of state.chatHistory){
+    const role = m.role==='user' ? 'user' : 'model';
+    if(out.length && out[out.length-1].role===role) out[out.length-1].parts[0].text += '\n' + m.content;
+    else out.push({ role, parts:[{ text:m.content }] });
+  }
+  return out;
+}
+
+async function runChat(){
+  const v = currentVeicolo();
+  state.chatError = null; state.busy = true; state.busyStatus = null; render();
+  try{
+    const problemiSummary = state.cache.problemi.map(p=>`- [${p.stato}] ${p.sintomi}${p.soluzione?' → risolto con: '+p.soluzione:''}`).join('\n') || 'Nessuno';
+    const system = `Sei un meccanico esperto e assistente per motociclisti/automobilisti. Veicolo: ${v.marca} ${v.modello} ${v.anno} (${v.tipo}), km attuali ${v.kmAttuali}. Storico problemi:\n${problemiSummary}\nRispondi in italiano, in modo conciso e pratico.`;
+    const reply = await callGemini({ system, contents: chatContents() });
+    state.chatHistory.push({role:'model', content:reply});
+  } catch(e){
+    state.chatError = e.message || 'chiamata non riuscita';
+  } finally {
+    state.busy = false; state.busyStatus = null; render();
+    setTimeout(()=>{ const el=document.querySelector('.chat-scroll'); if(el) el.scrollTop = el.scrollHeight; }, 50);
+  }
+}
+
 async function actionSendChat(){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if(!text) return;
-  const v = currentVeicolo();
   state.chatHistory.push({role:'user', content:text});
-  state.busy = true; state.busyStatus = null; render();
-  try{
-    const problemiSummary = state.cache.problemi.map(p=>`- [${p.stato}] ${p.sintomi}${p.soluzione?' → risolto con: '+p.soluzione:''}`).join('\n') || 'Nessuno';
-    const system = `Sei un meccanico esperto e assistente per motociclisti/automobilisti. Veicolo: ${v.marca} ${v.modello} ${v.anno} (${v.tipo}), km attuali ${v.kmAttuali}. Storico problemi:\n${problemiSummary}\nRispondi in italiano, in modo conciso e pratico.`;
-    const reply = await callGemini({
-      system,
-      contents: state.chatHistory.map(m=>({role: m.role==='user'?'user':'model', parts:[{text:m.content}]}))
-    });
-    state.chatHistory.push({role:'model', content:reply});
-  } catch(e){
-    state.chatHistory.push({role:'model', content:'Errore: ' + (e.message || 'chiamata non riuscita')});
-  } finally {
-    state.busy = false; state.busyStatus = null; input.value=''; render();
-    setTimeout(()=>{ const el=document.querySelector('.chat-scroll'); if(el) el.scrollTop = el.scrollHeight; }, 50);
-  }
+  input.value = '';
+  await runChat();
 }
 
 async function actionScansionaKm(file, veicoloId){
@@ -1246,7 +1316,7 @@ async function actionScansionaKm(file, veicoloId){
       showToast("Non sono riuscito a leggere il valore");
     }
   } catch(e){
-    showToast("Errore: " + (e.message || "lettura foto non riuscita"));
+    showActionToast("Errore: " + (e.message || "lettura foto non riuscita"), "Riprova", ()=>actionScansionaKm(file, veicoloId));
   } finally {
     state.busy = false; state.busyStatus = null; render();
   }
@@ -1271,7 +1341,7 @@ async function actionScansionaScadenza(file){
     }
     showToast("Dati estratti dal documento");
   } catch(e){
-    showToast("Errore: " + (e.message || "lettura documento non riuscita"));
+    showActionToast("Errore: " + (e.message || "lettura documento non riuscita"), "Riprova", ()=>actionScansionaScadenza(file));
   } finally {
     state.busy = false; state.busyStatus = null; render();
   }
@@ -1406,6 +1476,101 @@ async function esportaReportPDF(veicoloId){
   }
 }
 
+async function esportaRifornimentiPDF(veicoloId){
+  const v = state.veicoli.find(x=>x.id===veicoloId);
+  if(!v) return;
+  const rifs = (await dbGetAll('rifornimenti')).filter(r=>r.veicoloId===veicoloId);
+  if(!rifs.length){ showToast("Nessun rifornimento da esportare"); return; }
+  state.busy = true; render();
+  try{
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const doc = await PDFDocument.create();
+    const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const MARGIN = 50, PAGE_W = 595, PAGE_H = 842, ROW_H = 18;
+    let page = doc.addPage([PAGE_W, PAGE_H]);
+    let y = PAGE_H - MARGIN;
+    const flat = s => String(s==null?'':s).replace(/\s+/g,' ').trim();
+    const draw = (t, x, yy, {size=10, font=fontRegular, color=rgb(0.09,0.09,0.1)}={}) => page.drawText(flat(t), {x, y:yy, size, font, color});
+    const drawRight = (t, xRight, yy, opts={}) => {
+      const font = opts.font||fontRegular, size = opts.size||10;
+      draw(t, xRight - font.widthOfTextAtSize(flat(t), size), yy, opts);
+    };
+    const fmtN = (n,d=2) => n.toLocaleString('it-IT',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+    // statistiche (stessa formula usata in app: i litri del primo rifornimento sono esclusi)
+    const asc = [...rifs].sort((a,b)=> a.km-b.km);
+    const kmTot = asc[asc.length-1].km - asc[0].km;
+    const litriConsumati = asc.slice(1).reduce((t,r)=>t+(r.litri||0),0);
+    const consumo = kmTot>0 && litriConsumati>0 ? kmTot/litriConsumati : null;
+    const totLitri = rifs.reduce((t,r)=>t+(r.litri||0),0);
+    const totCosto = rifs.reduce((t,r)=>t+(r.costo||0),0);
+    const prezzoMedio = totLitri>0 ? totCosto/totLitri : null;
+    const kmPrev = new Map(); asc.forEach((r,i)=> kmPrev.set(r.id, i>0 ? r.km - asc[i-1].km : null));
+
+    draw("MyGarage", MARGIN, y, {size:11, font:fontBold, color:rgb(0.18,0.5,1)}); y -= 22;
+    draw(`Rifornimenti - ${v.marca} ${v.modello}`, MARGIN, y, {size:18, font:fontBold}); y -= 22;
+    draw(`${v.targa?'Targa '+v.targa+' - ':''}Generato il ${fmtDate(todayISO())}`, MARGIN, y, {size:9, color:rgb(0.55,0.55,0.57)}); y -= 24;
+    const summary = [
+      ['Rifornimenti', String(rifs.length)],
+      ['Litri totali', fmtN(totLitri)],
+      ['Spesa totale', fmtEuroPDF(totCosto)],
+      ['Prezzo medio', prezzoMedio ? fmtN(prezzoMedio,3)+' EUR/L' : '-'],
+      ['Consumo medio', consumo ? fmtN(consumo,1)+' km/L' : '-'],
+    ];
+    const boxW = (PAGE_W - 2*MARGIN) / summary.length;
+    summary.forEach(([lbl,val],i)=>{
+      draw(lbl, MARGIN + i*boxW, y, {size:8.5, color:rgb(0.45,0.45,0.48)});
+      draw(val, MARGIN + i*boxW, y-14, {size:11, font:fontBold});
+    });
+    y -= 36;
+
+    // colonne: allineate a destra sul bordo indicato (tranne la data)
+    const R = PAGE_W - MARGIN;
+    const cols = [
+      {label:'Data', x:MARGIN, right:false},
+      {label:'Km', x:MARGIN+135},
+      {label:'Litri', x:MARGIN+205},
+      {label:'Costo', x:MARGIN+290},
+      {label:'EUR/L', x:MARGIN+365},
+      {label:'Km percorsi', x:R},
+    ];
+    function header(){
+      cols.forEach(c => c.right===false ? draw(c.label, c.x, y, {size:9, font:fontBold, color:rgb(0.4,0.4,0.42)}) : drawRight(c.label, c.x, y, {size:9, font:fontBold, color:rgb(0.4,0.4,0.42)}));
+      y -= 6;
+      page.drawLine({start:{x:MARGIN,y}, end:{x:R,y}, thickness:0.5, color:rgb(0.8,0.8,0.8)});
+      y -= ROW_H;
+    }
+    header();
+    const rows = [...rifs].sort((a,b)=> new Date(b.data)-new Date(a.data) || b.km-a.km);
+    rows.forEach((r,i)=>{
+      if(y - ROW_H < MARGIN){ page = doc.addPage([PAGE_W, PAGE_H]); y = PAGE_H - MARGIN; header(); }
+      if(i%2===1) page.drawRectangle({x:MARGIN-4, y:y-5, width:R-MARGIN+8, height:ROW_H, color:rgb(0.96,0.96,0.97)});
+      const dk = kmPrev.get(r.id);
+      draw(fmtDate(r.data), cols[0].x, y, {size:9.5});
+      drawRight(fmtN(Math.round(r.km),0), cols[1].x, y, {size:9.5});
+      drawRight(fmtN(r.litri||0), cols[2].x, y, {size:9.5});
+      drawRight(fmtEuroPDF(r.costo||0), cols[3].x, y, {size:9.5});
+      drawRight(r.litri>0 ? fmtN(r.costo/r.litri,3) : '-', cols[4].x, y, {size:9.5});
+      drawRight(dk==null ? '-' : fmtN(Math.round(dk),0), cols[5].x, y, {size:9.5});
+      y -= ROW_H;
+    });
+
+    const pdfBytes = await doc.save();
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `MyGarage-Rifornimenti-${v.marca}-${v.modello}-${todayISO()}.pdf`.replace(/\s+/g,'_');
+    a.click();
+    URL.revokeObjectURL(url);
+    showSuccessToast("PDF rifornimenti generato");
+  } catch(e){
+    showToast("Errore generazione PDF: " + (e.message||"riprova"));
+  } finally {
+    state.busy = false; render();
+  }
+}
+
 /* ---------------- BACKUP ---------------- */
 async function clearAllData(){
   const db = await getDB();
@@ -1451,6 +1616,7 @@ async function esportaJSON(){
   a.href = url; a.download = `motolog-backup-${todayISO()}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  await saveSetting('ultimoBackup', new Date().toISOString());
   showToast("Backup esportato");
 }
 
@@ -1553,6 +1719,8 @@ app.addEventListener('click', async (e) => {
   if(action==='calSelectDay'){ state.calendarSelectedDate = state.calendarSelectedDate===el.dataset.date ? null : el.dataset.date; render(); return; }
   if(action==='setAiSubtab'){ state.aiSubtab=id; render(); return; }
   if(action==='dismissBanner'){ state.bannerDismissed[id+todayISO()]=true; render(); return; }
+  if(action==='toastAction'){ const fn = state.toastAction; state.toast=null; state.toastAction=null; render(); if(fn) await fn(); return; }
+  if(action==='dismissBackupBanner'){ state.bannerDismissed['bkp_'+todayISO()]=true; render(); return; }
   if(action==='dismissScadenzaBanner'){ state.bannerDismissed['scad_'+id+'_'+todayISO()]=true; render(); return; }
   if(action==='selectTipo'){
     const hidden = document.getElementById('tipoHiddenInput');
@@ -1581,6 +1749,7 @@ app.addEventListener('click', async (e) => {
   if(action==='salvaProposte'){ await actionSalvaProposte(); return; }
   if(action==='analizzaManuale'){ await actionAnalizzaManuale(); return; }
   if(action==='sendChat'){ await actionSendChat(); return; }
+  if(action==='retryChat'){ await runChat(); return; }
 
   if(action==='setPreferito'){
     const target = state.veicoli.find(x=>x.id===id);
@@ -1607,15 +1776,24 @@ app.addEventListener('click', async (e) => {
     return;
   }
   if(action==='deleteEntry'){
-    if(confirm("Eliminare questo elemento?")){
-      await dbDelete(type, id);
+    const rec = (await dbGetAll(type)).find(x=>x.id===id);
+    await dbDelete(type, id);
+    await loadVeicoloData(state.selectedVeicoloId);
+    state.modal=null; render();
+    if(rec) showActionToast("Elemento eliminato", "Annulla", async ()=>{
+      await dbPut(type, rec);
       await loadVeicoloData(state.selectedVeicoloId);
-      state.modal=null; render();
-    }
+      render();
+      showSuccessToast("Elemento ripristinato");
+    });
     return;
   }
   if(action==='exportReportPDF'){
     await esportaReportPDF(id);
+    return;
+  }
+  if(action==='exportRifornimentiPDF'){
+    await esportaRifornimentiPDF(id);
     return;
   }
   if(action==='calendarioKmAggiunto'){
@@ -1661,9 +1839,16 @@ app.addEventListener('click', async (e) => {
     return;
   }
   if(action==='deleteManuale'){
+    const rec = state.cache.manuale && state.cache.manuale.id===id ? state.cache.manuale : null;
     await dbDelete('manuali', id);
     await loadVeicoloData(state.selectedVeicoloId);
     render();
+    if(rec) showActionToast("Manuale eliminato", "Annulla", async ()=>{
+      await dbPut('manuali', rec);
+      await loadVeicoloData(state.selectedVeicoloId);
+      render();
+      showSuccessToast("Manuale ripristinato");
+    });
     return;
   }
 
@@ -1700,7 +1885,7 @@ app.addEventListener('click', async (e) => {
     if(confirm("Cancellare TUTTI i dati dell'app (veicoli, manutenzioni, scadenze, problemi, rifornimenti, manuali, allegati)? Considera di esportare prima un backup.")){
       if(confirm("Confermi? L'operazione non è reversibile.")){
         await clearAllData();
-        state.selectedVeicoloId = null; state.chatHistory=[]; state.proposte=null; state.tab='dashboard';
+        state.selectedVeicoloId = null; state.chatHistory=[]; state.chatError=null; state.proposte=null; state.tab='dashboard';
         await loadVeicoli(); await loadVeicoloData(null);
         showToast("Tutti i dati sono stati cancellati");
         render();
@@ -1966,6 +2151,34 @@ app.addEventListener('click', async (e) => {
   const exp = e.target.closest('[data-action="exportBackup"]');
   if(exp){ await esportaJSON(); }
 });
+// Rifornimento: litri, €/L e costo si aggiornano a vicenda (€/L non viene salvato)
+app.addEventListener('input', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-rif]') : null;
+  if(!el) return;
+  const form = document.getElementById('entryForm');
+  const L = form && form.elements.litri, P = form && form.elements.prezzoL, C = form && form.elements.costo;
+  if(!L || !P || !C) return;
+  const num = x => { const n = parseFloat(x.value); return isFinite(n) ? n : NaN; };
+  const field = el.dataset.rif;
+  if(field==='costo'){
+    C.dataset.manual = '1';
+    const l = num(L), c = num(C);
+    if(l>0 && c>=0) P.value = (c/l).toFixed(3);
+  } else if(field==='prezzo'){
+    C.dataset.manual = '';
+    const l = num(L), p = num(P);
+    if(l>=0 && p>=0) C.value = (l*p).toFixed(2);
+  } else if(field==='litri'){
+    const l = num(L);
+    if(C.dataset.manual==='1'){
+      const c = num(C);
+      if(l>0 && c>=0) P.value = (c/l).toFixed(3);
+    } else {
+      const p = num(P);
+      if(l>=0 && p>=0) C.value = (l*p).toFixed(2);
+    }
+  }
+});
 app.addEventListener('change', async (e) => {
   if(e.target.id==='importInput' && e.target.files[0]){ await importaJSON(e.target.files[0]); }
 });
@@ -1999,10 +2212,10 @@ function render(){
     ${tabBarHTML()}
     ${fabHTML()}
     ${state.modal ? modalContent() : ''}
-    ${state.toast ? `<div class="toast">${state.toast.success ? `<span class="check-badge">${ICONS.check}</span>` : ''}${escapeHTML(state.toast.text)}</div>` : ''}
+    ${state.toast ? `<div class="toast" role="status">${state.toast.success ? `<span class="check-badge">${ICONS.check}</span>` : ''}${escapeHTML(state.toast.text)}${state.toast.actionLabel ? `<button class="toast-act" data-action="toastAction">${escapeHTML(state.toast.actionLabel)}</button>` : ''}</div>` : ''}
     ${state.lightbox ? `<div class="modal-overlay" style="align-items:center;justify-content:center;" data-action="closeLightboxBg">
       <img src="${state.lightbox.url}" alt="${escapeHTML(state.lightbox.nome||'')}" style="max-width:92%;max-height:82vh;border-radius:16px;object-fit:contain;">
-      <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(5,9,18,.72);color:var(--text);border-color:var(--border);" data-action="closeLightbox">${ICONS.close}</button>
+      <button class="icon-btn" style="position:absolute;top:24px;right:18px;background:rgba(5,9,18,.72);color:var(--text);border-color:var(--border);" data-action="closeLightbox" aria-label="Chiudi immagine">${ICONS.close}</button>
     </div>` : ''}
   `;
 
@@ -2019,6 +2232,15 @@ function setupServiceWorker(){
 }
 
 /* ---------------- INIT ---------------- */
+async function requestPersistence(){
+  try{
+    if(!navigator.storage || !navigator.storage.persist) return;
+    let ok = await navigator.storage.persisted();
+    if(!ok && state.veicoli.length) ok = await navigator.storage.persist();
+    state.storagePersisted = !!ok;
+  } catch(e){ /* non supportato: nessuna azione */ }
+}
+
 (async function init(){
   try{
     setupServiceWorker();
@@ -2027,6 +2249,8 @@ function setupServiceWorker(){
     await loadVeicoli();
     await loadVeicoloData(state.selectedVeicoloId);
     render();
+    // non bloccante: in alcuni browser la richiesta mostra un permesso all'utente
+    requestPersistence().then(()=>{ if(state.tab==='impostazioni' && !state.modal) render(); });
   } catch(e){
     console.error('Errore avvio MyGarage:', e);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text);">
