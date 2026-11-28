@@ -410,14 +410,14 @@ function viewDashboard(){
         </div>
       </div>
       ${(() => {
-        const tile = (icon,bg,col,lbl,val,sub) => `<div class="tile"><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
+        const tile = (icon,bg,col,lbl,val,sub,act) => `<div class="tile"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
         const gScad = prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : null;
         const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
         const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossimaScadenzaData.tipo);
         return `<div class="tile-grid">
           ${tile(ICONS.dashboard,'var(--info-dim)','var(--info)','Km attuali',fmtKm(v.kmAttuali))}
           ${v.anno ? tile(ICONS.calendar,'var(--accent-dim)','var(--accent)','Anno',escapeHTML(String(v.anno))) : ''}
-          ${tile(ICONS.gas,'var(--ok-dim)','var(--ok)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti')}
+          ${tile(ICONS.gas,'var(--ok-dim)','var(--ok)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti','consumo')}
           ${tile(ICONS.calendar,'var(--warn-dim)','var(--warn)','Scadenza',scadVal,scadSub)}
         </div>`;
       })()}
@@ -513,7 +513,7 @@ function speseUltimi12Mesi(){
 }
 /* ---------------- STATISTICHE (grafici SVG a mano, colori da token tema) ---------------- */
 const MESI_BREVI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
-const STATS_TABS = [{id:'spesa', label:'Spesa'}];
+const STATS_TABS = [{id:'spesa', label:'Spesa'},{id:'consumo', label:'Consumo'},{id:'prezzo', label:'Prezzo'}];
 const STATS_PERIODI = [{v:6,label:'6 mesi'},{v:12,label:'12 mesi'},{v:0,label:'Tutto'}];
 
 /* --- funzioni pure --- */
@@ -624,6 +624,132 @@ function svgBarreImpilate(mesi, pick, ariaLabel){
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHTML(ariaLabel)}" style="display:block;font-family:var(--font-mono);">${grid}${cols}</svg>`;
 }
 
+/* --- Consumo e Prezzo (push B) --- */
+const periodoDaData = (periodo) => periodo > 0 ? mesiIndietro(meseKey(todayISO()), periodo) + '-01' : '';
+const statsPeriodoLabel = (p) => p > 0 ? `ultimi ${p} mesi` : 'da sempre';
+const MIN_RIFORNIMENTI_STATS = 3;
+const fmtKmL = (n) => n.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1});
+const fmtPrezzoL = (n) => n.toLocaleString('it-IT',{minimumFractionDigits:3,maximumFractionDigits:3}) + ' €/L';
+const fmtDataBreve = (iso) => { const [y,m] = iso.split('-'); return `${MESI_BREVI[+m-1]} ${y.slice(2)}`; };
+
+// Consumo per tratta (Δkm / litri del rifornimento) e media mobile su 3 tratte pesata Σkm/Σlitri
+function serieConsumo(rifornimenti, periodo){
+  const r = rifornimenti.filter(x => x.data && x.data <= todayISO()).sort((a,b)=> a.km-b.km || a.data.localeCompare(b.data));
+  const tratte = [];
+  for(let i=1; i<r.length; i++){
+    const km = r[i].km - r[i-1].km, litri = r[i].litri || 0;
+    if(!(km > 0 && litri > 0)) continue;
+    const w = tratte.concat({ km, litri }).slice(-3);
+    const sk = w.reduce((s,t)=> s+t.km, 0), sl = w.reduce((s,t)=> s+t.litri, 0);
+    tratte.push({ id:r[i].id, data:r[i].data, km, litri, valore: km/litri, media: sk/sl });
+  }
+  const da = periodoDaData(periodo);
+  return { n: r.length, punti: tratte.filter(t => t.data >= da).sort((a,b)=> a.data.localeCompare(b.data)) };
+}
+function seriePrezzo(rifornimenti, periodo){
+  const tutti = rifornimenti.filter(x => x.data && x.data <= todayISO());
+  const da = periodoDaData(periodo);
+  const punti = tutti.filter(x => x.litri > 0 && x.costo > 0 && x.data >= da)
+    .map(x => ({ id:x.id, data:x.data, km:x.km, litri:x.litri, costo:x.costo, valore: x.costo/x.litri }))
+    .sort((a,b)=> a.data.localeCompare(b.data));
+  const sc = punti.reduce((s,p)=> s+p.costo, 0), sl = punti.reduce((s,p)=> s+p.litri, 0);
+  return { n: tutti.length, punti, media: sl > 0 ? sc/sl : null };
+}
+// Scala Y per linee (non parte da zero)
+function scalaLinee(lo, hi){
+  let span = hi - lo;
+  if(!(span > 0)) span = Math.max(Math.abs(hi) * 0.1, 0.1);
+  const rough = span / 4, exp = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = [1,2,5,10].map(m => m*exp).find(s => s >= rough);
+  const min = Math.floor((lo - span*0.05) / step) * step;
+  const top = Math.ceil((hi + span*0.05) / step) * step;
+  return { step, min, top };
+}
+// punti: {data, y, y2?}  opts: {media, pick, aria, cls ('ok'|'info'), fmtY}
+function svgLinee(punti, o){
+  const W=340, H=210, L=40, R=12, T=12, B=34;
+  const pw = W-L-R, ph = H-T-B, n = punti.length;
+  const ys = punti.flatMap(p => p.y2 != null ? [p.y, p.y2] : [p.y]).concat(o.media != null ? [o.media] : []);
+  const { step, min, top } = scalaLinee(Math.min(...ys), Math.max(...ys));
+  const yOf = (v) => T + ph - ((v-min)/(top-min))*ph;
+  const ts = punti.map(p => Date.parse(p.data));
+  const t0 = Math.min(...ts), t1 = Math.max(...ts), span = t1 - t0;
+  const xi = L + 8, xw = pw - 16;
+  const xOf = (t) => span > 0 ? xi + xw*(t-t0)/span : L + pw/2;
+  const xs = ts.map(xOf);
+  const nTick = Math.round((top-min)/step);
+  let grid = '';
+  for(let k=0; k<=nTick; k++){
+    const v = min + k*step, yy = yOf(v).toFixed(1);
+    grid += `<line class="ch-grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="ch-txt" x="${L-6}" y="${(+yy+3).toFixed(1)}" text-anchor="end">${o.fmtY(v)}</text>`;
+  }
+  let xlab = '';
+  const nLab = span > 0 ? 4 : 1;
+  for(let k=0; k<nLab; k++){
+    const t = nLab === 1 ? t0 : t0 + span*k/(nLab-1);
+    const iso = new Date(t).toISOString().slice(0,10);
+    const anchor = nLab === 1 ? 'middle' : k === 0 ? 'start' : k === nLab-1 ? 'end' : 'middle';
+    xlab += `<text class="ch-txt" x="${xOf(t).toFixed(1)}" y="${H-B+16}" text-anchor="${anchor}">${fmtDataBreve(iso)}</text>`;
+  }
+  const avg = o.media != null ? `<line class="ch-avg" x1="${L}" x2="${W-R}" y1="${yOf(o.media).toFixed(1)}" y2="${yOf(o.media).toFixed(1)}"/>` : '';
+  const path = n > 1 ? `<path class="ch-line ch-line-${o.cls}" d="${punti.map((p,i)=> (i?'L':'M') + xs[i].toFixed(1) + ' ' + yOf(p.y).toFixed(1)).join(' ')}"/>` : '';
+  let pts = '', hits = '';
+  punti.forEach((p,i) => {
+    const sel = o.pick === i;
+    const dim = (o.pick != null && !sel) ? ' style="opacity:.5"' : '';
+    if(sel) pts += `<line class="ch-selline" x1="${xs[i].toFixed(1)}" x2="${xs[i].toFixed(1)}" y1="${T}" y2="${T+ph}"/>`;
+    if(p.y2 != null) pts += `<circle class="ch-raw"${dim} cx="${xs[i].toFixed(1)}" cy="${yOf(p.y2).toFixed(1)}" r="2.5"/>`;
+    pts += `<circle class="ch-dot ch-dot-${o.cls}"${dim} cx="${xs[i].toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="${sel?5.5:3.5}"/>`;
+    const xl = i === 0 ? L : (xs[i-1]+xs[i])/2, xr = i === n-1 ? W-R : (xs[i]+xs[i+1])/2;
+    hits += `<rect class="ch-hit" data-action="statPick" data-id="${i}" x="${xl.toFixed(1)}" y="${T}" width="${Math.max(xr-xl,1).toFixed(1)}" height="${ph+B}"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHTML(o.aria)}" style="display:block;font-family:var(--font-mono);">${grid}${xlab}${avg}${path}${pts}${hits}</svg>`;
+}
+function statsVuotoHTML(n){
+  return `<div class="card muted" style="text-align:center;padding:24px;">Servono almeno ${MIN_RIFORNIMENTI_STATS} rifornimenti per questo grafico (ne hai ${n}).</div>`;
+}
+function statsConsumoHTML(st){
+  const { n, punti } = serieConsumo(state.cache.rifornimenti, st.periodo);
+  if(n < MIN_RIFORNIMENTI_STATS) return statsVuotoHTML(n);
+  if(!punti.length) return `<div class="card muted" style="text-align:center;padding:24px;">Nessun dato di consumo ${st.periodo>0 ? 'negli ultimi '+st.periodo+' mesi' : ''}.</div>`;
+  const globale = consumoGlobale(state.cache.rifornimenti);
+  const ultimo = punti[punti.length-1];
+  const vmin = Math.min(...punti.map(p=>p.valore)), vmax = Math.max(...punti.map(p=>p.valore));
+  const riassunto = `Consumo ${statsPeriodoLabel(st.periodo)}: media mobile più recente ${fmtKmL(ultimo.media)} km/l${globale!=null ? `, media globale ${fmtKmL(globale)} km/l` : ''}. Tratte da ${fmtKmL(vmin)} a ${fmtKmL(vmax)} km/l su ${punti.length} ${punti.length===1?'rifornimento':'rifornimenti'}.`;
+  const sel = st.pick != null ? punti[st.pick] : null;
+  return `
+    <div class="mono" style="font-size:24px;font-weight:700;">${globale!=null ? fmtKmL(globale) : '—'} <span style="font-size:14px;font-weight:500;" class="muted">km/l</span></div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">Media globale · ${punti.length} ${punti.length===1?'tratta':'tratte'} · ${statsPeriodoLabel(st.periodo)}</div>
+    <div class="card" style="padding:12px;">
+      ${svgLinee(punti.map(p=>({data:p.data, y:p.media, y2:p.valore})), { media:globale, pick:st.pick, aria:riassunto, cls:'ok', fmtY:v=>fmtKmL(v) })}
+      <div class="ch-legend"><span><i class="ch-sw" style="background:var(--ok)"></i>Media mobile (3 tratte)</span><span><i class="ch-sw ch-sw-ring"></i>Singola tratta</span>${globale!=null ? `<span><i class="ch-sw ch-sw-dash"></i>Media globale</span>` : ''}</div>
+      <div aria-live="polite" style="margin-top:12px;font-size:13px;min-height:38px;">${sel
+        ? `<div style="font-weight:600;">${fmtDate(sel.data)}</div><div class="mono muted">${fmtKm(sel.km)} · ${sel.litri.toLocaleString('it-IT',{maximumFractionDigits:2})} L · tratta <span style="color:var(--text);">${fmtKmL(sel.valore)} km/l</span> · media mobile <span style="color:var(--text);">${fmtKmL(sel.media)} km/l</span></div>`
+        : `<div class="muted">Tocca un punto per vedere il dettaglio del rifornimento.</div>`}</div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:10px 2px 0;">${escapeHTML(riassunto)}</p>`;
+}
+function statsPrezzoHTML(st){
+  const { n, punti, media } = seriePrezzo(state.cache.rifornimenti, st.periodo);
+  if(n < MIN_RIFORNIMENTI_STATS) return statsVuotoHTML(n);
+  if(!punti.length) return `<div class="card muted" style="text-align:center;padding:24px;">Nessun rifornimento con prezzo ${st.periodo>0 ? 'negli ultimi '+st.periodo+' mesi' : ''}.</div>`;
+  const vmin = Math.min(...punti.map(p=>p.valore)), vmax = Math.max(...punti.map(p=>p.valore));
+  const ultimo = punti[punti.length-1];
+  const riassunto = `Prezzo carburante ${statsPeriodoLabel(st.periodo)}: media ${fmtPrezzoL(media)}, ultimo ${fmtPrezzoL(ultimo.valore)}, da ${fmtPrezzoL(vmin)} a ${fmtPrezzoL(vmax)} su ${punti.length} ${punti.length===1?'rifornimento':'rifornimenti'}.`;
+  const sel = st.pick != null ? punti[st.pick] : null;
+  return `
+    <div class="mono" style="font-size:24px;font-weight:700;">${fmtPrezzoL(media)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">Prezzo medio (Σ costo / Σ litri) · ${punti.length} ${punti.length===1?'rifornimento':'rifornimenti'} · ${statsPeriodoLabel(st.periodo)}</div>
+    <div class="card" style="padding:12px;">
+      ${svgLinee(punti.map(p=>({data:p.data, y:p.valore})), { media, pick:st.pick, aria:riassunto, cls:'info', fmtY:v=>v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:3}) })}
+      <div class="ch-legend"><span><i class="ch-sw" style="background:var(--info)"></i>Prezzo al litro</span><span><i class="ch-sw ch-sw-dash"></i>Prezzo medio</span></div>
+      <div aria-live="polite" style="margin-top:12px;font-size:13px;min-height:38px;">${sel
+        ? `<div style="font-weight:600;">${fmtDate(sel.data)}</div><div class="mono muted"><span style="color:var(--text);">${fmtPrezzoL(sel.valore)}</span> · ${fmtEuro(sel.costo)} per ${sel.litri.toLocaleString('it-IT',{maximumFractionDigits:2})} L</div>`
+        : `<div class="muted">Tocca un punto per vedere il dettaglio del rifornimento.</div>`}</div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:10px 2px 0;">${escapeHTML(riassunto)}</p>`;
+}
+
 /* --- modale --- */
 function statsSpesaHTML(st){
   const { mesi, voci } = serieSpesaMensile(state.cache, st.periodo);
@@ -661,7 +787,7 @@ function statsBodyHTML(){
     ? `<div class="sub-tabs">${STATS_TABS.map(t=>`<button class="sub-tab ${st.tab===t.id?'active':''}" data-action="statsTab" data-id="${t.id}">${t.label}</button>`).join('')}</div>`
     : '';
   const periodi = `<div style="display:flex;gap:8px;margin-bottom:14px;">${STATS_PERIODI.map(p=>`<button class="chip ${st.periodo===p.v?'active':''}" style="min-height:44px;" data-action="statsPeriodo" data-value="${p.v}" aria-pressed="${st.periodo===p.v}">${p.label}</button>`).join('')}</div>`;
-  const corpo = st.tab==='spesa' ? statsSpesaHTML(st) : '';
+  const corpo = st.tab==='spesa' ? statsSpesaHTML(st) : st.tab==='consumo' ? statsConsumoHTML(st) : st.tab==='prezzo' ? statsPrezzoHTML(st) : '';
   return `
     <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.chart}</div><h2>Statistiche</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     ${tabs}${periodi}${corpo}`;
