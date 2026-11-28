@@ -409,18 +409,7 @@ function viewDashboard(){
           ${v.targa ? `<div class="plate mono">${escapeHTML(v.targa)}</div>` : ''}
         </div>
       </div>
-      ${(() => {
-        const tile = (icon,bg,col,lbl,val,sub,act) => `<div class="tile"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
-        const gScad = prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : null;
-        const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
-        const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossimaScadenzaData.tipo);
-        return `<div class="tile-grid">
-          ${tile(ICONS.dashboard,'var(--info-dim)','var(--info)','Km attuali',fmtKm(v.kmAttuali))}
-          ${v.anno ? tile(ICONS.calendar,'var(--accent-dim)','var(--accent)','Anno',escapeHTML(String(v.anno))) : ''}
-          ${tile(ICONS.gas,'var(--ok-dim)','var(--ok)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti','consumo')}
-          ${tile(ICONS.calendar,'var(--warn-dim)','var(--warn)','Scadenza',scadVal,scadSub)}
-        </div>`;
-      })()}
+      ${veicoloStatTilesHTML(v)}
     </div>
     ${(() => {
       const pct = nextManut ? Math.max(0, Math.min(1, kmRimanenti/maxRange)) : 0;
@@ -810,7 +799,7 @@ function calKmStatoHTML(v){
     : `<div class="badge badge-warn" style="display:block;text-align:center;margin-top:14px;padding:8px;">Aggiunto a Calendar ogni ${c.giorni} giorni, ma ora l'intervallo è ${state.settings.kmReminderDays}: aggiungilo di nuovo</div>`;
 }
 function viewVeicoloDetail(v){
-  const tile = (icon,bg,col,lbl,val) => `<div class="tile"><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div></div>`;
+  const tile = statTile;
   const nProblemi = state.cache.problemi.filter(p=>p.stato==='aperto').length;
   return `<div class="content veh-detail">
     <div class="card">
@@ -854,6 +843,7 @@ function viewVeicoloDetail(v){
     <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.dashboard}</div><h3>Statistiche</h3></div>
     <div class="card">
       <div class="tile-grid">
+        ${veicoloStatTilesArray(v).join('')}
         ${tile('<span style="font-weight:700;font-size:13px;">€</span>','var(--ok-dim)','var(--ok)','Spesa manutenzioni',fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0)))}
         ${tile(ICONS.alert,nProblemi>0?'var(--danger-dim)':'var(--ok-dim)',nProblemi>0?'var(--danger)':'var(--ok)','Problemi aperti',nProblemi)}
       </div>
@@ -901,6 +891,30 @@ function pneumaticiModal(payload){
       </div>
     </form>
   `);
+}
+
+/* Tessera statistica: icona SEMPRE colorata. Se non viene passato un colore (o è neutro) si usa l'accent. */
+function statTile(icon,bg,col,lbl,val,sub,act){
+  const neutro = !bg || bg==='var(--surface)' || bg==='var(--surface-2)';
+  if(neutro){ bg = 'var(--accent-dim)'; col = 'var(--accent)'; }
+  return `<div class="tile"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
+}
+/* Le 4 statistiche della card principale (Km attuali, Anno, Consumo, Scadenza): usate in Dashboard e nella scheda veicolo */
+function veicoloStatTilesArray(v){
+  const consumoKmL = consumoGlobale(state.cache.rifornimenti);
+  const prossima = state.cache.scadenze.find(s=>s.stato==='attiva');
+  const gScad = prossima ? daysBetween(todayISO(),prossima.data) : null;
+  const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
+  const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossima.tipo);
+  return [
+    statTile(ICONS.dashboard,'var(--info-dim)','var(--info)','Km attuali',fmtKm(v.kmAttuali)),
+    v.anno ? statTile(ICONS.calendar,'var(--accent-dim)','var(--accent)','Anno',escapeHTML(String(v.anno))) : '',
+    statTile(ICONS.gas,'var(--ok-dim)','var(--ok)','Consumo',consumoKmL ? consumoKmL.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—',consumoKmL ? 'km al litro' : 'Servono 2+ rifornimenti','consumo'),
+    statTile(ICONS.calendar,'var(--warn-dim)','var(--warn)','Scadenza',scadVal,scadSub),
+  ];
+}
+function veicoloStatTilesHTML(v){
+  return `<div class="tile-grid">\n          ${veicoloStatTilesArray(v).join('\n          ')}\n        </div>`;
 }
 
 function categoriaLabel(cat, custom){
