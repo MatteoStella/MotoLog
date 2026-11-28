@@ -823,8 +823,8 @@ function viewVeicoloDetail(v){
       </div>
       <div class="tile-grid">
         ${tile(v.tipo==='moto'?ICONS.bike:ICONS.car,'var(--accent-dim)','var(--accent)','Tipo',v.tipo==='moto'?'Moto':'Auto')}
-        ${tile(ICONS.calendar,'var(--surface)','var(--text-muted)','Anno',v.anno)}
-        ${tile(ICONS.file,'var(--surface)','var(--text-muted)','Targa',v.targa||'—')}
+        ${tile(ICONS.calendar,'var(--accent-dim)','var(--accent)','Anno',v.anno)}
+        ${tile(ICONS.file,'var(--accent-dim)','var(--accent)','Targa',v.targa||'—')}
         ${tile(ICONS.dashboard,'var(--accent-dim)','var(--accent)','Km attuali',fmtKm(v.kmAttuali))}
       </div>
       <div id="calKmStato">${calKmStatoHTML(v)}</div>
@@ -871,7 +871,7 @@ function pneumaticiCardHTML(v, tile){
   const p = v.pneumatici;
   if(!p || (!p.anteriore?.misura && !p.posteriore?.misura)) return `<label style="margin:0 0 8px;display:block;">Nessuna misura salvata</label>`;
   const sub = (x) => x?.marcaModello ? `<div class="muted" style="font-size:12px;margin-top:2px;overflow-wrap:anywhere;">${escapeHTML(x.marcaModello)}</div>` : '';
-  const t = (lbl, x) => { const h = tile(ICONS.gomma,'var(--surface)','var(--text-muted)',lbl, escapeHTML(x?.misura||'—')); return h.slice(0, h.lastIndexOf('</div>')) + sub(x) + '</div>'; };
+  const t = (lbl, x) => { const h = tile(ICONS.gomma,'var(--accent-dim)','var(--accent)',lbl, escapeHTML(x?.misura||'—')); return h.slice(0, h.lastIndexOf('</div>')) + sub(x) + '</div>'; };
   if(p.uguali) return `<div class="tile-grid">${t(v.tipo==='moto'?'Ant. e post.':'Tutte e 4', p.anteriore)}</div>`;
   return `<div class="tile-grid">${t('Anteriore', p.anteriore)}${t('Posteriore', p.posteriore)}</div>`;
 }
