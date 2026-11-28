@@ -103,6 +103,7 @@ const ICONS = {
   dashboard: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3v4M4.2 7.2l2.8 2.8M19.8 7.2 17 10M3 15a9 9 0 0 1 18 0"/><path d="M12 15l4-6"/></svg>`,
   bike: `<svg class="icon" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 10h5l3.5 7.5M9 10 7 6h3M12.5 10l2 4"/></svg>`,
   list: `<svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`,
+  chart: `<svg class="icon" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-7M12 20V5M17 20v-10"/></svg>`,
   spark: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>`,
   plus: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`,
   back: `<svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`,
@@ -169,6 +170,7 @@ const state = {
   aiSubtab: 'chat',
   chatHistory: [],
   modal: null,
+  stats: null,
   toast: null,
   bannerDismissed: {},
   cache: { manutenzioni:[], scadenze:[], problemi:[], rifornimenti:[], manuale:null },
@@ -382,13 +384,7 @@ function viewDashboard(){
   const kmRimanenti = nextManut ? Math.max(0, nextManut.prossimaScadenzaKm - v.kmAttuali) : null;
   const maxRange = nextManut ? Math.max(1, nextManut.prossimaScadenzaKm - (nextManut.km||0)) : 1;
 
-  const rifornimenti = [...state.cache.rifornimenti].sort((a,b)=> a.km-b.km);
-  let consumoKmL = null;
-  if(rifornimenti.length >= 2){
-    const kmTotali = rifornimenti[rifornimenti.length-1].km - rifornimenti[0].km;
-    const litriConsumati = rifornimenti.slice(1).reduce((s,r)=> s+(r.litri||0), 0);
-    if(kmTotali > 0 && litriConsumati > 0) consumoKmL = kmTotali / litriConsumati;
-  }
+  const consumoKmL = consumoGlobale(state.cache.rifornimenti);
 
   const spese12 = speseUltimi12Mesi();
   const spesa12Mesi = spese12.reduce((t,x)=> t+x.costo, 0);
@@ -444,7 +440,7 @@ function viewDashboard(){
         <button class="btn-soft" style="margin-top:8px;background:var(--ok-dim);color:var(--ok-text);" data-action="openForm" data-type="rifornimenti">${ICONS.gas}<span>Nuovo rifornimento</span></button>
       </div>`;
     })()}
-    <div class="card row-card" data-action="openSpese">
+    <div class="card row-card" data-action="openStatistiche" data-tab="spesa">
       <div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);font-weight:700;font-size:18px;">€</div>
       <div class="grow">
         <div class="muted" style="font-size:12px;">Spesa ultimi 12 mesi</div>
@@ -515,23 +511,169 @@ function speseUltimi12Mesi(){
     .map(x => ({...x, costo: x.costo||0}))
     .sort((a,b)=> new Date(b.data)-new Date(a.data));
 }
-function speseModal(){
-  const voci = speseUltimi12Mesi();
-  const totale = voci.reduce((t,x)=>t+x.costo,0);
+/* ---------------- STATISTICHE (grafici SVG a mano, colori da token tema) ---------------- */
+const MESI_BREVI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const STATS_TABS = [{id:'spesa', label:'Spesa'}];
+const STATS_PERIODI = [{v:6,label:'6 mesi'},{v:12,label:'12 mesi'},{v:0,label:'Tutto'}];
+
+/* --- funzioni pure --- */
+// Stessa formula della dashboard: (km ultimo − km primo) / litri esclusi i primi
+function consumoGlobale(rifornimenti){
+  const r = [...rifornimenti].sort((a,b)=> a.km-b.km);
+  if(r.length < 2) return null;
+  const kmTotali = r[r.length-1].km - r[0].km;
+  const litri = r.slice(1).reduce((s,x)=> s+(x.litri||0), 0);
+  return (kmTotali > 0 && litri > 0) ? kmTotali / litri : null;
+}
+const meseKey = (iso) => iso.slice(0,7);
+function mesiRange(primo, ultimo){
+  const out = [];
+  let [y,m] = primo.split('-').map(Number);
+  const [y2,m2] = ultimo.split('-').map(Number);
+  while(y < y2 || (y === y2 && m <= m2)){
+    out.push(`${y}-${String(m).padStart(2,'0')}`);
+    m++; if(m > 12){ m = 1; y++; }
+  }
+  return out;
+}
+function mesiIndietro(ultimo, n){
+  let [y,m] = ultimo.split('-').map(Number);
+  m -= (n-1);
+  while(m < 1){ m += 12; y--; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+function meseLungo(key){
+  const [y,m] = key.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+}
+// Voci con costo (manutenzioni + rifornimenti + scadenze), data non futura
+function vociConCosto(cache){
+  return [
+    ...cache.manutenzioni.map(x=>({...x, _type:'manutenzioni', _label: categoriaLabel(x.categoria, x.categoriaCustom)})),
+    ...cache.rifornimenti.map(x=>({...x, _type:'rifornimenti', _label:'Rifornimento'})),
+    ...cache.scadenze.map(x=>({...x, _type:'scadenze', _label: tipoScadenzaLabel(x.tipo)})),
+  ].filter(x => x.data && x.data <= todayISO() && (x.costo||0) > 0);
+}
+// periodo: 6 | 12 mesi di calendario (mese corrente incluso), 0 = tutto
+function serieSpesaMensile(cache, periodo){
+  const voci = vociConCosto(cache);
+  const ultimo = meseKey(todayISO());
+  let primo;
+  if(periodo > 0) primo = mesiIndietro(ultimo, periodo);
+  else{
+    if(!voci.length) return { mesi:[], voci:[] };
+    primo = voci.reduce((mn,x)=> meseKey(x.data) < mn ? meseKey(x.data) : mn, ultimo);
+  }
+  const mesi = mesiRange(primo, ultimo).map(k => ({ key:k, carb:0, manut:0 }));
+  const idx = new Map(mesi.map((m,i)=>[m.key, i]));
+  const inPeriodo = [];
+  voci.forEach(x => {
+    const i = idx.get(meseKey(x.data));
+    if(i === undefined) return;
+    if(x._type === 'rifornimenti') mesi[i].carb += (x.costo||0); else mesi[i].manut += (x.costo||0);
+    inPeriodo.push(x);
+  });
+  inPeriodo.sort((a,b)=> new Date(b.data) - new Date(a.data));
+  return { mesi, voci: inPeriodo };
+}
+// Scala Y "pulita": al massimo 5 intervalli
+function scalaY(max){
+  if(!(max > 0)) return { step:1, top:1 };
+  const base = Math.pow(10, Math.floor(Math.log10(max)) - 1);
+  for(const mult of [1,2,5,10,20,50,100]){
+    const step = base * mult;
+    if(Math.ceil(max/step) <= 5) return { step, top: Math.ceil(max/step) * step };
+  }
+  return { step:max, top:max };
+}
+const fmtAsse = (v) => v >= 1000 ? (v/1000).toLocaleString('it-IT',{maximumFractionDigits:1}) + 'k' : v.toLocaleString('it-IT',{maximumFractionDigits:2});
+
+/* --- SVG --- */
+function svgBarreImpilate(mesi, pick, ariaLabel){
+  const W=340, H=210, L=36, R=8, T=10, B=34;
+  const pw = W-L-R, ph = H-T-B, n = mesi.length;
+  const max = Math.max(0, ...mesi.map(m => m.carb + m.manut));
+  const { step, top } = scalaY(max);
+  const yOf = (v) => T + ph - (v/top)*ph;
+  const slot = pw/n, bw = Math.min(slot*0.62, 28);
+  const every = Math.ceil(n/12);
+  let grid = '';
+  const nTick = Math.round(top/step);
+  for(let k=0; k<=nTick; k++){
+    const v = k*step, yy = yOf(v).toFixed(1);
+    grid += `<line class="ch-grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="ch-txt" x="${L-6}" y="${(+yy+3).toFixed(1)}" text-anchor="end">${fmtAsse(v)}</text>`;
+  }
+  let cols = '', lastYear = null;
+  mesi.forEach((m,i) => {
+    const x0 = L + slot*i, bx = x0 + (slot-bw)/2;
+    const hC = (m.carb/top)*ph, hM = (m.manut/top)*ph;
+    const dim = (pick != null && pick !== i) ? ' style="opacity:.4"' : '';
+    cols += `<g data-action="statPick" data-id="${i}">`;
+    if(pick === i) cols += `<rect class="ch-sel" x="${x0.toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${ph}" rx="4"/>`;
+    cols += `<g${dim}>`;
+    if(hC > 0) cols += `<rect class="ch-carb" x="${bx.toFixed(1)}" y="${(T+ph-hC).toFixed(1)}" width="${bw.toFixed(1)}" height="${hC.toFixed(1)}"/>`;
+    if(hM > 0) cols += `<rect class="ch-manut" x="${bx.toFixed(1)}" y="${(T+ph-hC-hM).toFixed(1)}" width="${bw.toFixed(1)}" height="${hM.toFixed(1)}"/>`;
+    cols += `</g>`;
+    if((n-1-i) % every === 0){
+      const [yy, mm] = m.key.split('-');
+      cols += `<text class="ch-txt" x="${(x0+slot/2).toFixed(1)}" y="${H-B+14}" text-anchor="middle">${MESI_BREVI[+mm-1]}</text>`;
+      if(yy !== lastYear){ cols += `<text class="ch-txt" x="${(x0+slot/2).toFixed(1)}" y="${H-B+26}" text-anchor="middle" style="font-size:9px">${yy}</text>`; lastYear = yy; }
+    }
+    cols += `<rect class="ch-hit" x="${x0.toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${ph+B}"/></g>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHTML(ariaLabel)}" style="display:block;font-family:var(--font-mono);">${grid}${cols}</svg>`;
+}
+
+/* --- modale --- */
+function statsSpesaHTML(st){
+  const { mesi, voci } = serieSpesaMensile(state.cache, st.periodo);
+  if(!voci.length) return `<div class="card muted" style="text-align:center;padding:24px;">Nessuna spesa registrata${st.periodo>0 ? ' negli ultimi '+st.periodo+' mesi' : ''}</div>`;
+  const totC = mesi.reduce((s,m)=> s+m.carb, 0), totM = mesi.reduce((s,m)=> s+m.manut, 0), tot = totC + totM;
+  const iTop = mesi.reduce((b,m,i)=> (m.carb+m.manut) > (mesi[b].carb+mesi[b].manut) ? i : b, 0);
+  const label = st.periodo > 0 ? `ultimi ${st.periodo} mesi` : `da sempre (${mesi.length} ${mesi.length===1?'mese':'mesi'})`;
+  const riassunto = `Spesa ${label}: totale ${fmtEuro(tot)}, di cui carburante ${fmtEuro(totC)} e manutenzione ${fmtEuro(totM)}. Media mensile ${fmtEuro(tot/mesi.length)}. Mese più alto: ${meseLungo(mesi[iTop].key)} (${fmtEuro(mesi[iTop].carb+mesi[iTop].manut)}).`;
+  const sel = (st.pick != null) ? mesi[st.pick] : null;
   const nomi = {manutenzioni:'Manutenzione', rifornimenti:'Rifornimento', scadenze:'Scadenza'};
-  return modalWrapper(`
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--ok-dim);color:var(--ok);"><span style="font-weight:700;font-size:18px;">€</span></div><h2>Spesa ultimi 12 mesi</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
-    <div class="mono" style="font-size:24px;font-weight:700;margin-bottom:4px;">${fmtEuro(totale)}</div>
-    <div class="muted" style="font-size:12px;margin-bottom:14px;">${voci.length} ${voci.length===1?'voce':'voci'}</div>
-    ${voci.length ? `<div class="card">${voci.map(x=>`
+  return `
+    <div class="mono" style="font-size:24px;font-weight:700;">${fmtEuro(tot)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">${voci.length} ${voci.length===1?'voce':'voci'} · ${label}</div>
+    <div class="card" style="padding:12px;">
+      ${svgBarreImpilate(mesi, st.pick, riassunto)}
+      <div class="ch-legend"><span><i class="ch-sw" style="background:var(--ok)"></i>Carburante</span><span><i class="ch-sw" style="background:var(--accent)"></i>Manutenzione (incl. scadenze)</span></div>
+      <div aria-live="polite" style="margin-top:12px;font-size:13px;min-height:38px;">${sel
+        ? `<div style="font-weight:600;text-transform:capitalize;">${meseLungo(sel.key)}</div><div class="mono muted">Carburante ${fmtEuro(sel.carb)} · Manutenzione ${fmtEuro(sel.manut)} · <span style="color:var(--text);">Totale ${fmtEuro(sel.carb+sel.manut)}</span></div>`
+        : `<div class="muted">Tocca una barra per vedere il dettaglio del mese.</div>`}</div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:10px 2px 16px;">${escapeHTML(riassunto)}</p>
+    <div class="card">${voci.map(x=>`
       <div data-action="openEdit" data-type="${x._type}" data-id="${x.id}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;">
         <div style="min-width:0;">
           <div style="font-size:14px;font-weight:600;">${escapeHTML(x._label)}</div>
           <div class="muted" style="font-size:12px;">${fmtDate(x.data)} · ${nomi[x._type]}${x._type==='scadenze' && x.stato!=='completata' ? ' (attiva)' : ''}</div>
         </div>
         <div class="mono" style="font-weight:700;white-space:nowrap;">${fmtEuro(x.costo)}</div>
-      </div>`).join('')}</div>` : `<div class="card muted" style="text-align:center;padding:24px;">Nessuna spesa registrata</div>`}
-  `);
+      </div>`).join('')}</div>`;
+}
+function statsBodyHTML(){
+  const st = state.stats || { tab:'spesa', periodo:12, pick:null };
+  if(!STATS_TABS.some(t=>t.id===st.tab)) st.tab = STATS_TABS[0].id;
+  const tabs = STATS_TABS.length > 1
+    ? `<div class="sub-tabs">${STATS_TABS.map(t=>`<button class="sub-tab ${st.tab===t.id?'active':''}" data-action="statsTab" data-id="${t.id}">${t.label}</button>`).join('')}</div>`
+    : '';
+  const periodi = `<div style="display:flex;gap:8px;margin-bottom:14px;">${STATS_PERIODI.map(p=>`<button class="chip ${st.periodo===p.v?'active':''}" style="min-height:44px;" data-action="statsPeriodo" data-value="${p.v}" aria-pressed="${st.periodo===p.v}">${p.label}</button>`).join('')}</div>`;
+  const corpo = st.tab==='spesa' ? statsSpesaHTML(st) : '';
+  return `
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.chart}</div><h2>Statistiche</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
+    ${tabs}${periodi}${corpo}`;
+}
+function statisticheModal(){ return modalWrapper(statsBodyHTML()); }
+// Aggiorna solo il corpo della modale (niente render() completo)
+function statsRefresh(){
+  const sheet = document.querySelector('.modal-sheet');
+  if(!sheet || state.modal?.view !== 'stats') return;
+  const sc = sheet.scrollTop;
+  sheet.innerHTML = statsBodyHTML();
+  sheet.scrollTop = sc;
 }
 
 function calKmStatoHTML(v){
@@ -1731,7 +1873,10 @@ app.addEventListener('click', async (e) => {
     return;
   }
 
-  if(action==='openSpese'){ state.modal={view:'spese'}; render(); return; }
+  if(action==='openStatistiche'){ state.stats = { tab: el.dataset.tab || 'spesa', periodo: state.stats?.periodo ?? 12, pick: null }; state.modal={view:'stats'}; render(); return; }
+  if(action==='statsTab' && state.stats){ state.stats.tab = id; state.stats.pick = null; statsRefresh(); return; }
+  if(action==='statsPeriodo' && state.stats){ state.stats.periodo = Number(el.dataset.value); state.stats.pick = null; statsRefresh(); return; }
+  if(action==='statPick' && state.stats){ const i = Number(id); state.stats.pick = state.stats.pick===i ? null : i; statsRefresh(); return; }
   if(action==='openTypeChooser'){ state.modal={view:'typeChooser'}; render(); return; }
   if(action==='openForm'){
     if(type==='manutenzioni') await loadEditAttachments(null);
@@ -2109,7 +2254,7 @@ function modalContent(){
   if(view==='problemi') return problemaFormModal(payload);
   if(view==='rifornimenti') return rifornimentoFormModal(payload);
   if(view==='kmUpdate') return kmUpdateModal(payload.id);
-  if(view==='spese') return speseModal();
+  if(view==='stats') return statisticheModal();
   return '';
 }
 
