@@ -739,10 +739,10 @@ function statsPrezzoHTML(st){
   const sel = st.pick != null ? punti[st.pick] : null;
   return `
     <div class="mono" style="font-size:24px;font-weight:700;">${fmtPrezzoL(media)}</div>
-    <div class="muted" style="font-size:12px;margin-bottom:14px;">Prezzo medio (Σ costo / Σ litri) · ${punti.length} ${punti.length===1?'rifornimento':'rifornimenti'} · ${statsPeriodoLabel(st.periodo)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">Prezzo medio · ${punti.length} ${punti.length===1?'rifornimento':'rifornimenti'} · ${statsPeriodoLabel(st.periodo)}</div>
     <div class="card" style="padding:12px;">
       ${svgLinee(punti.map(p=>({data:p.data, y:p.valore})), { media, pick:st.pick, aria:riassunto, cls:'info', fmtY:v=>v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:3}) })}
-      <div class="ch-legend"><span><i class="ch-sw" style="background:var(--info)"></i>Prezzo al litro</span><span><i class="ch-sw ch-sw-dash"></i>Prezzo medio</span></div>
+      <div class="ch-legend"><span><i class="ch-sw" style="background:var(--info)"></i>Prezzo al litro</span><span><i class="ch-sw ch-sw-dash"></i>Media del periodo</span></div>
       <div aria-live="polite" style="margin-top:12px;font-size:13px;min-height:38px;">${sel
         ? `<div style="font-weight:600;">${fmtDate(sel.data)}</div><div class="mono muted"><span style="color:var(--text);">${fmtPrezzoL(sel.valore)}</span> · ${fmtEuro(sel.costo)} per ${sel.litri.toLocaleString('it-IT',{maximumFractionDigits:2})} L</div>`
         : `<div class="muted">Tocca un punto per vedere il dettaglio del rifornimento.</div>`}</div>
