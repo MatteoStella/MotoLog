@@ -844,7 +844,7 @@ function viewVeicoloDetail(v){
     <div class="card">
       <div class="tile-grid">
         ${veicoloStatTilesArray(v).join('')}
-        ${tile('<span style="font-weight:700;font-size:13px;">€</span>','var(--ok-dim)','var(--ok)','Spesa manutenzioni',fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0)))}
+        ${tile('<span style="font-weight:700;font-size:13px;">€</span>','var(--ok-dim)','var(--ok)','Spesa manutenzioni',fmtEuro(state.cache.manutenzioni.reduce((s,m)=>s+(m.costo||0),0)),undefined,'spesa')}
         ${tile(ICONS.alert,nProblemi>0?'var(--danger-dim)':'var(--ok-dim)',nProblemi>0?'var(--danger)':'var(--ok)','Problemi aperti',nProblemi)}
       </div>
     </div>
@@ -897,7 +897,8 @@ function pneumaticiModal(payload){
 function statTile(icon,bg,col,lbl,val,sub,act){
   const neutro = !bg || bg==='var(--surface)' || bg==='var(--surface-2)';
   if(neutro){ bg = 'var(--accent-dim)'; col = 'var(--accent)'; }
-  return `<div class="tile"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
+  const tap = act ? ` data-action="openStatistiche" data-tab="${act}" role="button" aria-label="${lbl}: apri statistiche"` : '';
+  return `<div class="tile${act?' tile-tap':''}"${tap}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}${act?`<div class="tile-chev" aria-hidden="true">${ICONS.chevron}</div>`:''}</div>`;
 }
 /* Le 4 statistiche della card principale (Km attuali, Anno, Consumo, Scadenza): usate in Dashboard e nella scheda veicolo */
 function veicoloStatTilesArray(v){
