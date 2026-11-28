@@ -778,8 +778,7 @@ function statsBodyHTML(){
   const periodi = `<div style="display:flex;gap:8px;margin-bottom:14px;">${STATS_PERIODI.map(p=>`<button class="chip ${st.periodo===p.v?'active':''}" style="min-height:44px;" data-action="statsPeriodo" data-value="${p.v}" aria-pressed="${st.periodo===p.v}">${p.label}</button>`).join('')}</div>`;
   const corpo = st.tab==='spesa' ? statsSpesaHTML(st) : st.tab==='consumo' ? statsConsumoHTML(st) : st.tab==='prezzo' ? statsPrezzoHTML(st) : '';
   return `
-    <div class="sheet-grab" aria-hidden="true"></div>
-    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.chart}</div><h2>Statistiche</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
+        <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.chart}</div><h2>Statistiche</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     ${tabs}${periodi}${corpo}`;
 }
 function statisticheModal(){ return modalWrapper(statsBodyHTML()); }
