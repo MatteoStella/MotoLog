@@ -410,7 +410,7 @@ function viewDashboard(){
         </div>
       </div>
       ${(() => {
-        const tile = (icon,bg,col,lbl,val,sub,act) => `<div class="tile"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
+        const tile = (icon,bg,col,lbl,val,sub,act) => `<div class="tile tile-i"${act ? ` data-action="openStatistiche" data-tab="${act}" role="button" style="cursor:pointer;" aria-label="${lbl}: apri statistiche"` : ''}><div class="tile-head"><div class="tile-ico" style="${tileIcoStyle(bg)}">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div>${sub?`<div class="tile-sub">${sub}</div>`:''}</div>`;
         const gScad = prossimaScadenzaData ? daysBetween(todayISO(),prossimaScadenzaData.data) : null;
         const scadVal = gScad===null ? '—' : (gScad>30 ? Math.ceil(gScad/30)+' '+(Math.ceil(gScad/30)===1?'mese':'mesi') : gScad+' gg');
         const scadSub = gScad===null ? 'Nessuna scadenza' : tipoScadenzaLabel(prossimaScadenzaData.tipo);
@@ -810,7 +810,7 @@ function calKmStatoHTML(v){
     : `<div class="badge badge-warn" style="display:block;text-align:center;margin-top:14px;padding:8px;">Aggiunto a Calendar ogni ${c.giorni} giorni, ma ora l'intervallo è ${state.settings.kmReminderDays}: aggiungilo di nuovo</div>`;
 }
 function viewVeicoloDetail(v){
-  const tile = (icon,bg,col,lbl,val) => `<div class="tile"><div class="tile-head"><div class="tile-ico" style="background:${bg};color:${col};">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div></div>`;
+  const tile = (icon,bg,col,lbl,val) => `<div class="tile tile-i"><div class="tile-head"><div class="tile-ico" style="${tileIcoStyle(bg)}">${icon}</div><div class="tile-lbl">${lbl}</div></div><div class="tile-val mono">${val}</div></div>`;
   const nProblemi = state.cache.problemi.filter(p=>p.stato==='aperto').length;
   return `<div class="content veh-detail">
     <div class="card">
@@ -901,6 +901,19 @@ function pneumaticiModal(payload){
       </div>
     </form>
   `);
+}
+
+/* Badge icona delle tessere: riempimento pieno, colore semantico (neutri -> accent) */
+function tileIcoStyle(bg){
+  const m = {
+    'var(--accent-dim)': ['var(--accent)','var(--on-accent)'],
+    'var(--ok-dim)':     ['var(--ok)','#0B1220'],
+    'var(--warn-dim)':   ['var(--warn)','#0B1220'],
+    'var(--info-dim)':   ['var(--info)','#0B1220'],
+    'var(--danger-dim)': ['var(--danger)','#FFFFFF'],
+  };
+  const [fill, ink] = m[bg] || m['var(--accent-dim)'];
+  return `background:${fill};color:${ink};`;
 }
 
 function categoriaLabel(cat, custom){
