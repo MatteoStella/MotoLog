@@ -831,6 +831,12 @@ function viewVeicoloDetail(v){
       <a data-action="calendarioKmAggiunto" data-id="${v.id}" href="${googleCalendarLink({title:`Controlla km - ${v.marca} ${v.modello}`, dateISO:addDays(todayISO(), state.settings.kmReminderDays), details:'Promemoria ricorrente da MyGarage: aggiorna i km del veicolo', recurRule:`RRULE:FREQ=DAILY;INTERVAL=${state.settings.kmReminderDays}`})}" target="_blank" rel="noopener" class="btn-soft" style="margin-top:${v.calendarKm?'8':'14'}px;">${ICONS.calendar} <span>${v.calendarKm?'Aggiungi di nuovo':'Aggiungi'} promemoria km ricorrente su Calendar</span></a>
     </div>
 
+    <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.gomma}</div><h3>Pneumatici</h3></div>
+    <div class="card">
+      ${pneumaticiCardHTML(v, tile)}
+      <button class="btn-soft" style="margin-top:${v.pneumatici?'14':'0'}px;" data-action="openPneumatici" data-id="${v.id}">${ICONS.wrench} <span>${v.pneumatici?'Modifica misure':'Aggiungi misure'}</span></button>
+    </div>
+
     <div class="sec-head" style="margin-top:24px;"><div class="sec-ico">${ICONS.file}</div><h3>Manuale (per l'AI)</h3></div>
     <div class="card">
       ${state.cache.manuale ? `
@@ -859,6 +865,42 @@ function viewVeicoloDetail(v){
     <button class="btn-soft" style="margin-top:10px;" data-action="exportRifornimentiPDF" data-id="${v.id}" ${state.busy?'disabled':''}>${ICONS.gas} Esporta rifornimenti (PDF)</button>
     <button class="btn btn-danger btn-block" style="margin-top:10px;" data-action="deleteVeicolo" data-id="${v.id}">Elimina veicolo</button>
   </div>`;
+}
+
+function pneumaticiCardHTML(v, tile){
+  const p = v.pneumatici;
+  if(!p || (!p.anteriore?.misura && !p.posteriore?.misura)) return `<label style="margin:0 0 8px;display:block;">Nessuna misura salvata</label>`;
+  const sub = (x) => x?.marcaModello ? `<div class="muted" style="font-size:12px;margin-top:2px;overflow-wrap:anywhere;">${escapeHTML(x.marcaModello)}</div>` : '';
+  const t = (lbl, x) => { const h = tile(ICONS.gomma,'var(--surface)','var(--text-muted)',lbl, escapeHTML(x?.misura||'—')); return h.slice(0, h.lastIndexOf('</div>')) + sub(x) + '</div>'; };
+  if(p.uguali) return `<div class="tile-grid">${t(v.tipo==='moto'?'Ant. e post.':'Tutte e 4', p.anteriore)}</div>`;
+  return `<div class="tile-grid">${t('Anteriore', p.anteriore)}${t('Posteriore', p.posteriore)}</div>`;
+}
+function pneumaticiModal(payload){
+  const v = state.veicoli.find(x=>x.id===payload?.id);
+  if(!v) return '';
+  const p = v.pneumatici || {};
+  const isAuto = v.tipo==='auto';
+  const uguali = isAuto && (p.uguali ?? true);
+  const ph = isAuto ? 'es. 205/45 R17' : 'es. 120/70 ZR17';
+  const phPost = isAuto ? 'es. 225/40 R18' : 'es. 160/60 ZR17';
+  return modalWrapper(`
+    <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.gomma}</div><h2>Pneumatici</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
+    <form id="pneuForm">
+      ${isAuto ? `<div class="field"><label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer;">
+        <input type="checkbox" name="uguali" ${uguali?'checked':''} data-action="togglePneuUguali" style="width:auto;">
+        <span style="font-size:13px;color:var(--text);">Anteriori e posteriori uguali</span>
+      </label></div>` : ''}
+      <div class="field"><label id="pneuAntLbl">${uguali?'Misura (tutte e 4)':'Misura anteriore'}</label><input name="antMisura" value="${escapeHTML(p.anteriore?.misura||'')}" placeholder="${ph}" autocapitalize="characters"></div>
+      <div class="field"><label>Marca / modello (opzionale)</label><input name="antMarca" value="${escapeHTML(p.anteriore?.marcaModello||'')}"></div>
+      <div id="pneuPost" style="${uguali?'display:none;':''}">
+        <div class="field"><label>Misura posteriore</label><input name="postMisura" value="${escapeHTML(p.posteriore?.misura||'')}" placeholder="${phPost}" autocapitalize="characters"></div>
+        <div class="field"><label>Marca / modello posteriore (opzionale)</label><input name="postMarca" value="${escapeHTML(p.posteriore?.marcaModello||'')}"></div>
+      </div>
+      <div class="actions-footer">
+        <button type="submit" class="btn btn-primary btn-block" data-action="savePneumatici" data-id="${v.id}">Salva</button>
+      </div>
+    </form>
+  `);
 }
 
 function categoriaLabel(cat, custom){
@@ -2008,6 +2050,7 @@ app.addEventListener('click', async (e) => {
     if(type==='manutenzioni') await loadEditAttachments(null);
     state.modal={view:type}; render(); return;
   }
+  if(action==='openPneumatici'){ state.modal={view:'pneumatici', payload:{id}}; render(); return; }
   if(action==='openVeicoloForm'){ state.modal={view:'veicoloForm', payload:{id}}; render(); return; }
   if(action==='openVeicoloDetail'){ state.selectedVeicoloId=id; state.tab='veicoli-detail'; await loadVeicoloData(id); render(); return; }
   if(action==='openEdit'){
@@ -2177,6 +2220,12 @@ app.addEventListener('change', async (e) => {
     if(field) field.style.display = el.value==='altro' ? '' : 'none';
     return;
   }
+  if(action==='togglePneuUguali'){
+    const post = document.getElementById('pneuPost'), lbl = document.getElementById('pneuAntLbl');
+    if(post) post.style.display = el.checked ? 'none' : '';
+    if(lbl) lbl.textContent = el.checked ? 'Misura (tutte e 4)' : 'Misura anteriore';
+    return;
+  }
   if(action==='toggleSyncKmField'){
     const field = document.getElementById('syncKmField');
     if(field) field.style.display = el.value===todayISO() ? '' : 'none';
@@ -2281,6 +2330,25 @@ app.addEventListener('submit', async (e) => {
     return;
   }
 
+  if(form.id==='pneuForm'){
+    const btn = form.querySelector('[data-action="savePneumatici"]');
+    const veic = state.veicoli.find(x=>x.id===btn.dataset.id);
+    if(!veic) return;
+    const t = (k) => (fd.get(k)||'').toString().trim();
+    const uguali = veic.tipo==='auto' && fd.get('uguali')!==null;
+    const ant = { misura: t('antMisura').toUpperCase(), marcaModello: t('antMarca') };
+    const post = uguali ? { ...ant } : { misura: t('postMisura').toUpperCase(), marcaModello: t('postMarca') };
+    if(!ant.misura && !post.misura) delete veic.pneumatici;
+    else veic.pneumatici = { uguali, anteriore: ant, posteriore: post };
+    await dbPut('veicoli', veic);
+    state.modal=null;
+    await loadVeicoli();
+    await loadVeicoloData(veic.id);
+    showSuccessToast("Pneumatici salvati");
+    render();
+    return;
+  }
+
   if(form.id==='kmForm'){
     const btn = form.querySelector('[data-action="saveKm"]');
     const vid = btn.dataset.id;
@@ -2375,6 +2443,7 @@ function modalContent(){
   const { view, payload } = state.modal;
   if(view==='typeChooser') return typeChooserModal();
   if(view==='veicoloForm') return veicoloFormModal(payload);
+  if(view==='pneumatici') return pneumaticiModal(payload);
   if(view==='manutenzioni') return manutenzioneFormModal(payload);
   if(view==='scadenze') return scadenzaFormModal(payload);
   if(view==='problemi') return problemaFormModal(payload);
