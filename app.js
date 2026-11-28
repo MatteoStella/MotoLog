@@ -778,6 +778,7 @@ function statsBodyHTML(){
   const periodi = `<div style="display:flex;gap:8px;margin-bottom:14px;">${STATS_PERIODI.map(p=>`<button class="chip ${st.periodo===p.v?'active':''}" style="min-height:44px;" data-action="statsPeriodo" data-value="${p.v}" aria-pressed="${st.periodo===p.v}">${p.label}</button>`).join('')}</div>`;
   const corpo = st.tab==='spesa' ? statsSpesaHTML(st) : st.tab==='consumo' ? statsConsumoHTML(st) : st.tab==='prezzo' ? statsPrezzoHTML(st) : '';
   return `
+    <div class="sheet-grab" aria-hidden="true"></div>
     <div class="modal-header"><div class="sec-head" style="margin:0;"><div class="sec-ico" style="background:var(--accent-dim);color:var(--accent);">${ICONS.chart}</div><h2>Statistiche</h2></div><button class="icon-btn" data-action="closeModal" aria-label="Chiudi">${ICONS.close}</button></div>
     ${tabs}${periodi}${corpo}`;
 }
@@ -2004,6 +2005,57 @@ app.addEventListener('touchend', (e) => {
   if(dx < 0 && idx < TAB_ORDER.length - 1){ state.tab = TAB_ORDER[idx + 1]; render(); }
   else if(dx > 0 && idx > 0){ state.tab = TAB_ORDER[idx - 1]; render(); }
 }, {passive:true});
+
+/* Swipe verso il basso per chiudere la modale Statistiche */
+function closeStatsModal(){
+  state.editAttachments.forEach(a=>{ try{ URL.revokeObjectURL(a.url); }catch(err){} });
+  state.editAttachments = [];
+  state.modal = null; state.proposte = null; render();
+}
+let sheetDrag = null;
+app.addEventListener('touchstart', (e) => {
+  sheetDrag = null;
+  if(state.modal?.view !== 'stats' || e.touches.length !== 1) return;
+  const sheet = e.target.closest('.modal-sheet');
+  if(!sheet) return;
+  sheetDrag = { sheet, overlay: sheet.parentElement, x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), dy: 0, drag: false, dead: false };
+}, {passive:true});
+app.addEventListener('touchmove', (e) => {
+  const g = sheetDrag;
+  if(!g || g.dead) return;
+  const t = e.touches[0];
+  if(!g.drag){
+    if(Math.abs(t.clientX - g.x0) > Math.abs(t.clientY - g.y0) && Math.abs(t.clientX - g.x0) > 8){ g.dead = true; return; }
+    if(g.sheet.scrollTop > 0){ g.y0 = t.clientY; return; }       // contenuto scrollato: è scroll normale
+    if(t.clientY - g.y0 <= 8) return;
+    g.drag = true; g.y0 = t.clientY; g.t0 = Date.now();
+    g.sheet.style.transition = 'none'; g.sheet.style.animation = 'none';
+    g.overlay.style.transition = 'none';
+  }
+  g.dy = Math.max(0, t.clientY - g.y0);
+  e.preventDefault();
+  g.sheet.style.transform = `translateY(${g.dy}px)`;
+  g.overlay.style.background = `rgba(5,9,18,${(0.72 * Math.max(0, 1 - g.dy / (g.sheet.offsetHeight || 400))).toFixed(3)})`;
+}, {passive:false});
+function endSheetDrag(){
+  const g = sheetDrag; sheetDrag = null;
+  if(!g || !g.drag) return;
+  const vel = g.dy / Math.max(1, Date.now() - g.t0);
+  if(g.dy > 120 || (g.dy > 50 && vel > 0.6)){
+    g.sheet.style.transition = 'transform .18s ease-in';
+    g.overlay.style.transition = 'background .18s ease-in';
+    g.sheet.style.transform = 'translateY(100%)';
+    g.overlay.style.background = 'rgba(5,9,18,0)';
+    setTimeout(closeStatsModal, 180);
+  } else {
+    g.sheet.style.transition = 'transform .2s ease-out';
+    g.overlay.style.transition = 'background .2s ease-out';
+    g.sheet.style.transform = '';
+    g.overlay.style.background = '';
+  }
+}
+app.addEventListener('touchend', endSheetDrag, {passive:true});
+app.addEventListener('touchcancel', endSheetDrag, {passive:true});
 
 app.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]');

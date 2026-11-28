@@ -151,6 +151,8 @@
   .modal-sheet{background:var(--bg-2);border-radius:20px 20px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:88vh;overflow-y:auto;padding:20px 18px calc(24px + var(--safe-bottom));animation:slideup .22s ease-out;}
   @keyframes slideup{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .modal-overlay,.modal-sheet{overscroll-behavior:contain;}
+  .sheet-grab{width:36px;height:4px;border-radius:2px;background:var(--border);margin:-8px auto 14px;}
   .modal-header h2{font-size:18px;}
   .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .type-opt{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text);font-size:13px;font-weight:500;}
